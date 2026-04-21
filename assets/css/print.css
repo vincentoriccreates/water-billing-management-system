@@ -1,0 +1,53 @@
+/* ── AquaBill Print Stylesheet ───────────────────────────────────────────────
+   Linked via <link rel="stylesheet" media="print" href="assets/css/print.css">
+   Also triggered automatically by @media print in style.css
+─────────────────────────────────────────────────────────────────────────────*/
+@media print {
+  /* Hide UI chrome */
+  .sidebar, .topbar, .toolbar, .pagination,
+  .flash, .modal-overlay, .no-print,
+  .btn, .btn-sm, nav, header, footer,
+  #flash-msg { display: none !important; }
+
+  /* Reset layout */
+  body, html { background: #fff !important; color: #000 !important; font-size: 12pt }
+  .main-wrap { margin: 0 !important; }
+  .page-content { padding: 0 !important; }
+
+  /* Cards look clean */
+  .card {
+    box-shadow: none !important;
+    border: 1px solid #ccc !important;
+    break-inside: avoid;
+  }
+
+  /* Tables */
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border: 1px solid #aaa; padding: 6px 10px; font-size: 10pt; }
+  th { background: #eee !important; -webkit-print-color-adjust: exact; }
+
+  /* Receipt / Bill Statement */
+  .receipt, .bill-stmt {
+    box-shadow: none !important;
+    border: none !important;
+    max-width: 100% !important;
+  }
+
+  /* Page breaks */
+  .page-break { page-break-after: always; }
+  h2, h3 { page-break-after: avoid; }
+  tr { page-break-inside: avoid; }
+
+  /* Links as plain text */
+  a[href]::after { content: none !important; }
+
+  /* Show page URL in footer */
+  @page {
+    margin: 1.5cm;
+    @bottom-center {
+      content: "AquaBill Water Billing System — Page " counter(page) " of " counter(pages);
+      font-size: 9pt;
+      color: #666;
+    }
+  }
+}

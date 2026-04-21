@@ -1,0 +1,46 @@
+# ── AquaBill – Apache Security Configuration ─────────────────────────────────
+
+# Deny access to config folder
+<FilesMatch "^(db\.php|schema\.sql)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# Prevent directory listing
+Options -Indexes
+
+# Protect .htaccess itself
+<Files .htaccess>
+    Order Allow,Deny
+    Deny from all
+</Files>
+
+# Block access to includes folder directly
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Redirect to login if not authenticated (basic protection)
+    # Actual auth is handled by PHP sessions
+
+    # Block direct access to includes
+    RewriteRule ^includes/ - [F,L]
+
+    # Block direct access to config
+    RewriteRule ^config/db\.php$ - [F,L]
+</IfModule>
+
+# Security headers
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# PHP settings
+<IfModule mod_php.c>
+    php_flag display_errors Off
+    php_flag log_errors On
+    php_value session.cookie_httponly 1
+    php_value session.cookie_samesite "Lax"
+</IfModule>

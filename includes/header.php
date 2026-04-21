@@ -50,6 +50,7 @@ function renderHeader(string $title = '', string $activePg = ''): void {
         ['href'=>'reports.php',       'icon'=>'📊', 'label'=>'Reports'],
         ['href'=>'notifications.php', 'icon'=>'🔔', 'label'=>'Notifications', 'badge'=>$notifCount],
         ['href'=>'import.php',        'icon'=>'📥', 'label'=>'CSV Import'],
+        ['href'=>'field-app-guide.php','icon'=>'📱','label'=>'Field App'],
     ];
     if ($u['role'] === 'Admin') {
         $navItems[] = ['href'=>'rates.php',   'icon'=>'💲','label'=>'Billing Rates'];

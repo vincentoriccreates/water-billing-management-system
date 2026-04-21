@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS bills (
     base_charge DECIMAL(8,2) NOT NULL DEFAULT 120.00,
     penalty DECIMAL(8,2) NOT NULL DEFAULT 0.00,
     total DECIMAL(10,2) NOT NULL,
-    status ENUM('Unpaid','Paid','Overdue') NOT NULL DEFAULT 'Unpaid',
+    status ENUM('Unpaid','Paid','Overdue','Waived','Disputed') NOT NULL DEFAULT 'Unpaid',
     due_date DATE NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE

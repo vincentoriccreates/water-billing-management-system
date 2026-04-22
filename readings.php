@@ -21,12 +21,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($current < $prev) {
         setFlash('Current reading cannot be less than previous reading (' . fmtNum($prev) . ').', 'error');
     } else {
-        $consumption = $current - $prev;
+        $consumption = round($current - $prev, 2);
         $count = (int)$pdo->query("SELECT COUNT(*) FROM readings")->fetchColumn() + 1;
         $newId = 'R' . str_pad($count, 3, '0', STR_PAD_LEFT);
-        $stmt  = $pdo->prepare("INSERT INTO readings (id,customer_id,reading_date,previous_reading,current_reading,consumption) VALUES (?,?,?,?,?,?)");
-        $stmt->execute([$newId, $custId, $date, $prev, $current, $consumption]);
-        setFlash("Reading recorded! Consumption: {$consumption} m³");
+        $pdo->prepare("INSERT INTO readings (id,customer_id,reading_date,previous_reading,current_reading,consumption) VALUES (?,?,?,?,?,?)")
+            ->execute([$newId, $custId, $date, $prev, $current, $consumption]);
+
+        // ── Auto-generate bill for this reading ────────────────────────────
+        $billingMonth = date('F Y', strtotime($date)); // e.g. "March 2025"
+        $dupBill = $pdo->prepare("SELECT id FROM bills WHERE customer_id=? AND billing_month=?");
+        $dupBill->execute([$custId, $billingMonth]);
+        $existingBill = $dupBill->fetch();
+
+        if (!$existingBill) {
+            $total    = calcBill($consumption);
+            $due      = date('Y-m-d', strtotime($date . ' +15 days'));
+            $bCount   = (int)$pdo->query("SELECT COUNT(*) FROM bills")->fetchColumn() + 1;
+            $billId   = 'B' . str_pad($bCount, 3, '0', STR_PAD_LEFT);
+            $pdo->prepare(
+                "INSERT INTO bills (id,customer_id,reading_id,billing_month,prev_reading,curr_reading,
+                 consumption,rate_per_cubic,base_charge,penalty,total,status,due_date)
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)"
+            )->execute([
+                $billId, $custId, $newId, $billingMonth,
+                $prev, $current, $consumption,
+                RATE_PER_CUBIC, BASE_CHARGE, 0, $total, 'Unpaid', $due
+            ]);
+            setFlash("Reading recorded (ID: $newId) — Bill $billId auto-generated for $billingMonth: " . fmt($total));
+        } else {
+            setFlash("Reading recorded (ID: $newId). Bill for $billingMonth already exists — no duplicate created.");
+        }
     }
     header('Location: readings.php');
     exit;

@@ -62,27 +62,29 @@ renderHeader('Notifications', 'notifications');
 ?>
 
 <!-- Summary Banner -->
-<div class="card mb-3" style="background:linear-gradient(135deg,var(--accent-dark),var(--accent));color:#fff;border:none">
-  <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
-    <div style="font-size:36px">🔔</div>
-    <div style="flex:1">
-      <div style="font-size:20px;font-weight:900"><?= $totalAlerts ?> Active Notification<?= $totalAlerts!=1?'s':'' ?></div>
-      <div style="font-size:13px;opacity:.85;margin-top:3px">Last checked: <?= date('F j, Y g:i A') ?></div>
+<div class="card mb-3" style="background:linear-gradient(135deg,var(--accent-dark),var(--accent));color:#fff;border:none;padding:20px">
+  <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:16px">
+    <div style="font-size:32px;flex-shrink:0">🔔</div>
+    <div>
+      <div style="font-size:19px;font-weight:900;line-height:1.2"><?= $totalAlerts ?> Active Notification<?= $totalAlerts!=1?'s':'' ?></div>
+      <div style="font-size:12px;opacity:.8;margin-top:3px">Checked: <?= date('M j, Y g:i A') ?></div>
     </div>
-    <div style="display:flex;gap:16px;flex-wrap:wrap">
-      <div style="text-align:center;background:rgba(255,255,255,.15);border-radius:10px;padding:10px 16px">
-        <div style="font-size:22px;font-weight:900"><?= count($overdue) ?></div>
-        <div style="font-size:11px;opacity:.85">Overdue</div>
-      </div>
-      <div style="text-align:center;background:rgba(255,255,255,.15);border-radius:10px;padding:10px 16px">
-        <div style="font-size:22px;font-weight:900"><?= count($dueSoon) ?></div>
-        <div style="font-size:11px;opacity:.85">Due Soon</div>
-      </div>
-      <div style="text-align:center;background:rgba(255,255,255,.15);border-radius:10px;padding:10px 16px">
-        <div style="font-size:22px;font-weight:900"><?= count($noReadingThisMonth) ?></div>
-        <div style="font-size:11px;opacity:.85">No Reading</div>
-      </div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+    <?php
+    $summaryBoxes = [
+      ['Overdue',      count($overdue),             '#e63946'],
+      ['Due Soon',     count($dueSoon),              '#f4a261'],
+      ['No Reading',   count($noReadingThisMonth),   '#90e0ef'],
+      ['High Usage',   count($highUsage),            '#caf0f8'],
+    ];
+    foreach ($summaryBoxes as [$lbl,$cnt,$col]):
+    ?>
+    <div style="background:rgba(255,255,255,.15);border-radius:10px;padding:10px 6px;text-align:center">
+      <div style="font-size:22px;font-weight:900;color:<?= $col ?>"><?= $cnt ?></div>
+      <div style="font-size:10px;opacity:.85;margin-top:2px;line-height:1.3"><?= $lbl ?></div>
     </div>
+    <?php endforeach; ?>
   </div>
 </div>
 

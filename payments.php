@@ -103,28 +103,47 @@ renderHeader('Payments', 'payments');
 
 <!-- Receipt Modal -->
 <?php if ($receiptData): ?>
+<script>
+var _receiptData = <?= json_encode([
+  'receipt_no'    => $receiptData['receipt_no'],
+  'payment_date'  => $receiptData['payment_date'],
+  'cname'         => $receiptData['cname'],
+  'cid'           => $receiptData['cid'],
+  'billing_month' => $receiptData['billing_month'],
+  'method'        => $receiptData['method'],
+  'notes'         => $receiptData['notes'] ?? '',
+  'amount'        => $receiptData['amount'],
+], JSON_HEX_QUOT | JSON_HEX_APOS) ?>;
+</script>
 <div class="modal-overlay" id="receipt-modal" style="display:flex" onclick="if(event.target===this)window.location='payments.php'">
-  <div class="modal" style="max-width:420px">
-    <div style="background:#fff;color:#111;font-family:monospace;padding:24px;border-radius:10px" id="receipt-print">
-      <div style="text-align:center;margin-bottom:14px">
-        <div style="font-size:24px">💧</div>
-        <strong style="font-size:15px;font-family:sans-serif">OFFICIAL RECEIPT</strong><br>
-        <small>AquaBill Water Services</small>
+  <div class="modal" style="max-width:460px">
+    <!-- On-screen display (styled) -->
+    <div style="background:#fff;color:#111;font-family:'Courier New',monospace;padding:24px;border-radius:10px;border:1px solid #ddd">
+      <div style="text-align:center;border-bottom:2px dashed #ccc;padding-bottom:14px;margin-bottom:14px">
+        <div style="font-size:18px;font-weight:900;letter-spacing:.5px;font-family:sans-serif">AQUABILL COOP. INC.</div>
+        <div style="font-size:12px;color:#555;margin-top:2px">San Juan, Siquijor, Philippines</div>
+        <div style="font-size:13px;font-weight:700;margin-top:8px;letter-spacing:2px;text-transform:uppercase">— Official Receipt —</div>
       </div>
-      <div style="border-top:1px dashed #ccc;border-bottom:1px dashed #ccc;padding:10px 0;line-height:2;font-size:13px">
-        <div><b>Receipt No:</b> <?= h($receiptData['receipt_no']) ?></div>
-        <div><b>Date:</b> <?= h($receiptData['payment_date']) ?></div>
-        <div><b>Customer:</b> <?= h($receiptData['cname']) ?></div>
-        <div><b>Account No:</b> <?= h($receiptData['cid']) ?></div>
-        <div><b>Bill Period:</b> <?= h($receiptData['billing_month']) ?></div>
-        <div><b>Method:</b> <?= h($receiptData['method']) ?></div>
-        <?php if ($receiptData['notes']): ?><div><b>Notes:</b> <?= h($receiptData['notes']) ?></div><?php endif; ?>
+      <div style="font-size:13px;line-height:2.1">
+        <div style="display:flex;justify-content:space-between"><span><b>Receipt No:</b></span><span><?= h($receiptData['receipt_no']) ?></span></div>
+        <div style="display:flex;justify-content:space-between"><span><b>Date:</b></span><span><?= h($receiptData['payment_date']) ?></span></div>
+        <div style="border-top:1px dashed #ccc;margin:6px 0"></div>
+        <div style="display:flex;justify-content:space-between"><span><b>Customer:</b></span><span><?= h($receiptData['cname']) ?></span></div>
+        <div style="display:flex;justify-content:space-between"><span><b>Account No:</b></span><span><?= h($receiptData['cid']) ?></span></div>
+        <div style="display:flex;justify-content:space-between"><span><b>Bill Period:</b></span><span><?= h($receiptData['billing_month']) ?></span></div>
+        <div style="display:flex;justify-content:space-between"><span><b>Method:</b></span><span><?= h($receiptData['method']) ?></span></div>
+        <?php if ($receiptData['notes']): ?><div style="display:flex;justify-content:space-between"><span><b>Notes:</b></span><span><?= h($receiptData['notes']) ?></span></div><?php endif; ?>
       </div>
-      <div style="text-align:center;font-size:28px;font-weight:900;color:#2d6a4f;margin:14px 0"><?= fmt($receiptData['amount']) ?></div>
-      <div style="text-align:center;font-size:11px;color:#777">This serves as your official receipt.<br>Thank you for your payment!</div>
+      <div style="border-top:1px dashed #ccc;border-bottom:1px dashed #ccc;margin:10px 0;padding:10px 0;text-align:center">
+        <div style="font-size:30px;font-weight:900;color:#2d6a4f"><?= fmt($receiptData['amount']) ?></div>
+      </div>
+      <div style="text-align:center;font-size:11px;color:#777;margin-top:10px">
+        Thank you for your payment!<br>This serves as your official receipt.<br>
+        AquaBill Coop. Inc. — San Juan, Siquijor, Philippines
+      </div>
     </div>
-    <div class="modal-footer no-print">
-      <button onclick="window.print()" class="btn btn-primary">🖨️ Print</button>
+    <div class="modal-footer">
+      <button onclick="printReceipt(buildReceiptHtml(_receiptData))" class="btn btn-primary">🖨️ Print Receipt</button>
       <a href="payments.php" class="btn btn-outline">Close</a>
     </div>
   </div>

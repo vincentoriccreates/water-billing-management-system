@@ -226,6 +226,26 @@ renderHeader('Billing', 'billing');
     $totalPaid = array_sum(array_column($viewBill['payments'],'amount'));
     $balance   = $viewBill['total'] - $totalPaid;
 ?>
+<script>
+var _billData = <?= json_encode([
+  'id'            => $viewBill['id'],
+  'billing_month' => $viewBill['billing_month'],
+  'due_date'      => $viewBill['due_date'],
+  'cname'         => $viewBill['cname'],
+  'cid'           => $viewBill['cid'],
+  'meter_no'      => $viewBill['meter_no'],
+  'address'       => $viewBill['address'] ?? '',
+  'prev_reading'  => $viewBill['prev_reading'],
+  'curr_reading'  => $viewBill['curr_reading'],
+  'consumption'   => $viewBill['consumption'],
+  'base_charge'   => $viewBill['base_charge'],
+  'rate_per_cubic'=> $viewBill['rate_per_cubic'],
+  'penalty'       => $viewBill['penalty'],
+  'total'         => $viewBill['total'],
+  'paid_amount'   => $totalPaid,
+  'status'        => $viewBill['status'],
+], JSON_HEX_QUOT | JSON_HEX_APOS) ?>;
+</script>
 <!-- BILL DETAIL MODAL -->
 <div class="modal-overlay" id="view-bill-modal" style="display:flex" onclick="if(event.target===this)window.location='billing.php'">
   <div class="modal" style="max-width:560px">
@@ -362,8 +382,8 @@ renderHeader('Billing', 'billing');
     </a>
     <?php endif; ?>
 
-    <div class="modal-footer no-print" style="margin-top:12px">
-      <button onclick="window.print()" class="btn btn-outline btn-sm">🖨️ Print</button>
+    <div class="modal-footer" style="margin-top:12px">
+      <button onclick="printReceipt(buildBillHtml(_billData))" class="btn btn-outline btn-sm">🖨️ Print Bill</button>
       <a href="billing.php" class="btn btn-outline btn-sm">✕ Close</a>
     </div>
   </div>
@@ -559,6 +579,10 @@ renderHeader('Billing', 'billing');
 <script>
 const readingsData = <?= json_encode($readingsByCustomer) ?>;
 const BASE = <?= BASE_CHARGE ?>, RATE = <?= RATE_PER_CUBIC ?>;
+// Expose to app.js helpers
+window.__readingsData = readingsData;
+window.__baseCharge   = BASE;
+window.__rate         = RATE;
 
 function loadReadings() {
   const custId = document.getElementById('gen_customer').value;

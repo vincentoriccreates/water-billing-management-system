@@ -2,1181 +2,1174 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="AquaBill Field">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="AquaBill">
 <meta name="theme-color" content="#023e8a">
-<title>AquaBill Field — Meter Readings</title>
-
-<!-- PWA Manifest inline -->
-<link rel="manifest" href="data:application/json,{
-  %22name%22:%22AquaBill Field App%22,
-  %22short_name%22:%22AquaBill%22,
-  %22description%22:%22Offline meter reading recorder for field staff%22,
-  %22start_url%22:%22.%22,
-  %22display%22:%22standalone%22,
-  %22background_color%22:%22%23023e8a%22,
-  %22theme_color%22:%22%23023e8a%22,
-  %22icons%22:[{%22src%22:%22data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23023e8a'/%3E%3Ctext y='.9em' font-size='70' x='12'%3E💧%3C/text%3E%3C/svg%3E%22,%22sizes%22:%22any%22,%22type%22:%22image/svg+xml%22}]
-}">
-
+<title>AquaBill Field</title>
 <style>
-/* ── Reset & Base ── */
+/* ── Reset ────────────────────────────────────────────── */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html{height:100%;font-size:16px}
+html{height:100%}
 body{
-  height:100%;font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif;
-  background:#f0f4f8;color:#1a2a3a;overflow-x:hidden;
-  -webkit-font-smoothing:antialiased;
+  height:100%;overflow:hidden;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;font-size:16px;
+  background:#f0f4f8;color:#1a2a3a;
 }
 
-/* ── CSS Variables ── */
+/* ── Safe area vars ───────────────────────────────────── */
 :root{
-  --blue:#023e8a;--blue-mid:#0077b6;--blue-light:#90e0ef;--blue-pale:#caf0f8;
+  --blue:#023e8a;--blue-m:#0077b6;--blue-l:#caf0f8;
   --green:#2d6a4f;--green-bg:#d8f3dc;
   --orange:#b5632a;--orange-bg:#ffe8d6;
   --red:#c1121f;--red-bg:#ffe5e5;
-  --gray:#5a7085;--gray-light:#e8f0f7;--gray-border:#ccd8e5;
-  --surface:#fff;--shadow:0 2px 12px rgba(0,100,200,.10);
-  --radius:14px;--radius-sm:10px;
+  --gray:#5a7085;--gray-l:#f0f4f8;--gray-b:#ccd8e5;
+  --surface:#fff;
+  --safe-t:env(safe-area-inset-top,0px);
+  --safe-b:env(safe-area-inset-bottom,0px);
 }
 
-/* ── Screen system ── */
-.screen{display:none;flex-direction:column;height:100vh;overflow:hidden}
-.screen.active{display:flex}
+/* ── App shell: fixed, full screen, flex column ───────── */
+#app{
+  position:fixed;
+  top:0;left:0;right:0;bottom:0;
+  display:flex;
+  flex-direction:column;
+  /* account for notch */
+  padding-top:var(--safe-t);
+  padding-bottom:var(--safe-b);
+}
 
-/* ── Topbar ── */
-.topbar{
+/* ── Topbar: fixed height, never shrinks ─────────────── */
+#topbar{
+  height:52px;
+  flex-shrink:0;
   background:var(--blue);color:#fff;
-  padding:env(safe-area-inset-top,0) 16px 0;
+  display:flex;align-items:center;padding:0 14px;gap:10px;
+  box-shadow:0 2px 8px rgba(0,0,0,.3);
+  z-index:20;
+}
+#tb-title{font-size:16px;font-weight:800;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#tb-sub{font-size:10px;opacity:.7}
+.tb-btn{
+  background:rgba(255,255,255,.2);border:none;color:#fff;
+  border-radius:8px;padding:7px 9px;cursor:pointer;font-size:18px;
+  line-height:1;flex-shrink:0;min-width:36px;text-align:center;
+}
+.tb-btn:active{opacity:.7}
+.net-dot{
+  width:8px;height:8px;border-radius:50%;flex-shrink:0;
+  background:#52b788;box-shadow:0 0 0 2px rgba(82,183,136,.35);
+  transition:background .3s;
+}
+.net-dot.off{background:#e63946;box-shadow:0 0 0 2px rgba(230,57,70,.35)}
+
+/* ── Content area: fills all space between topbar and tabbar ── */
+/* KEY FIX: This is a flex item that grows, with overflow hidden.
+   Each page inside it is display:none or display:flex.
+   No position:absolute — that was causing the click-blocking bug. */
+#content{
+  flex:1;
+  overflow:hidden;  /* clip children — do NOT use overflow:auto here */
+  display:flex;
+  flex-direction:column;
+  min-height:0;     /* critical for flex children to not overflow */
+}
+
+/* ── Pages: each fills content area, scrolls internally ─ */
+/* KEY FIX: pages are flex siblings, not absolutely positioned.
+   display:none hides them completely. display:flex makes them visible.
+   overflow-y:auto is on the page itself — properly clipped. */
+.page{
+  display:none;
+  flex-direction:column;
+  flex:1;
+  min-height:0;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  padding:12px;
+  gap:0;
+}
+.page.active{display:flex}
+
+/* ── Tabbar: fixed height, never shrinks, always above content ── */
+#tabbar{
+  height:56px;
   flex-shrink:0;
+  background:var(--surface);
+  border-top:1px solid var(--gray-b);
+  display:flex;
+  z-index:20;
 }
-.topbar-inner{
-  display:flex;align-items:center;gap:12px;height:56px;
+.tab-btn{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:2px;cursor:pointer;border:none;background:none;
+  color:var(--gray);font-size:11px;font-weight:700;
+  padding:6px 0;-webkit-user-select:none;user-select:none;
+  transition:color .15s;
 }
-.topbar h1{font-size:17px;font-weight:800;flex:1;letter-spacing:.3px}
-.topbar .topbar-sub{font-size:11px;opacity:.7;margin-top:-2px}
-.topbar-btn{
-  background:rgba(255,255,255,.18);border:none;color:#fff;
-  border-radius:8px;padding:7px 10px;cursor:pointer;font-size:18px;line-height:1;
-  flex-shrink:0;
+.tab-btn.active{color:var(--blue-m)}
+.tab-btn:active{background:rgba(0,119,182,.06)}
+.tab-icon-wrap{position:relative;display:inline-flex;align-items:center;justify-content:center}
+.tab-icon{font-size:23px;line-height:1}
+.tab-badge{
+  position:absolute;top:-5px;right:-9px;
+  background:var(--red);color:#fff;border-radius:9px;
+  padding:1px 5px;font-size:9px;font-weight:800;line-height:1.5;
+  display:none;
 }
-.badge-pill{
-  background:var(--red);color:#fff;border-radius:20px;
-  padding:2px 8px;font-size:11px;font-weight:800;
-}
-.online-dot{
-  width:9px;height:9px;border-radius:50%;flex-shrink:0;
-  background:#52b788;box-shadow:0 0 0 2px rgba(82,183,136,.4);
-}
-.online-dot.offline{background:#e63946;box-shadow:0 0 0 2px rgba(230,57,70,.4)}
 
-/* ── Tab bar ── */
-.tabbar{
-  background:var(--surface);border-top:1px solid var(--gray-border);
-  display:flex;padding:0 0 env(safe-area-inset-bottom,0);flex-shrink:0;
+/* ── Cards ──────────────────────────────────────────────── */
+.card{
+  background:var(--surface);border-radius:14px;padding:14px;
+  box-shadow:0 2px 10px rgba(0,100,200,.08);
+  margin-bottom:10px;flex-shrink:0;
 }
-.tab{
-  flex:1;display:flex;flex-direction:column;align-items:center;
-  padding:8px 4px;gap:3px;cursor:pointer;border:none;background:none;
-  color:var(--gray);font-size:10px;font-weight:600;letter-spacing:.3px;
-  transition:color .2s;
+.card-title{
+  font-size:11px;font-weight:800;color:var(--blue);
+  text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;
 }
-.tab .tab-icon{font-size:22px;line-height:1}
-.tab.active{color:var(--blue-mid)}
-.tab .tab-badge{
-  position:absolute;top:-4px;right:-4px;background:var(--red);color:#fff;
-  border-radius:8px;padding:1px 5px;font-size:9px;font-weight:800;
+
+/* ── Stat row ───────────────────────────────────────────── */
+.stat-row{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:8px;margin-bottom:10px;flex-shrink:0;
 }
-.tab-icon-wrap{position:relative;display:inline-flex}
-
-/* ── Scroll content ── */
-.scroll-content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px}
-.scroll-content.no-pad{padding:0}
-
-/* ── Cards ── */
-.card{background:var(--surface);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);margin-bottom:12px}
-.card-title{font-size:13px;font-weight:800;color:var(--blue);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px}
-
-/* ── Stat strip ── */
-.stat-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
-.stat-box{background:var(--surface);border-radius:var(--radius-sm);padding:12px;text-align:center;box-shadow:var(--shadow)}
-.stat-box .val{font-size:22px;font-weight:900;line-height:1}
-.stat-box .lbl{font-size:10px;color:var(--gray);margin-top:3px;font-weight:600}
-
-/* ── Search ── */
-.search-wrap{position:relative;margin-bottom:14px}
-.search-wrap input{
-  width:100%;padding:11px 16px 11px 40px;border-radius:var(--radius-sm);
-  border:1.5px solid var(--gray-border);background:var(--surface);
-  font-size:15px;outline:none;
+.stat-box{
+  background:var(--surface);border-radius:12px;padding:11px 6px;
+  text-align:center;box-shadow:0 2px 8px rgba(0,100,200,.07);
 }
-.search-wrap input:focus{border-color:var(--blue-mid)}
-.search-wrap .search-icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--gray);font-size:16px}
+.stat-val{font-size:22px;font-weight:900;line-height:1}
+.stat-lbl{font-size:10px;color:var(--gray);margin-top:2px;font-weight:600}
 
-/* ── Customer list ── */
-.customer-item{
-  background:var(--surface);border-radius:var(--radius-sm);padding:14px;
-  box-shadow:var(--shadow);margin-bottom:8px;
-  display:flex;align-items:center;gap:12px;cursor:pointer;
-  border:2px solid transparent;transition:border-color .2s,background .2s;
+/* ── Progress ───────────────────────────────────────────── */
+.progress-wrap{height:6px;background:var(--gray-l);border-radius:3px;overflow:hidden;margin:4px 0 10px;flex-shrink:0}
+.progress-fill{height:100%;background:var(--blue-m);border-radius:3px;transition:width .4s}
+
+/* ── Filter chips ───────────────────────────────────────── */
+.chips{
+  display:flex;gap:7px;overflow-x:auto;padding-bottom:2px;
+  margin-bottom:10px;flex-shrink:0;
+}
+.chips::-webkit-scrollbar{display:none}
+.chip{
+  padding:6px 14px;border-radius:20px;border:1.5px solid var(--gray-b);
+  background:var(--surface);color:var(--gray);font-size:12px;font-weight:700;
+  cursor:pointer;white-space:nowrap;flex-shrink:0;
   -webkit-user-select:none;user-select:none;
 }
-.customer-item:active{background:var(--gray-light)}
-.customer-item.has-reading{border-color:var(--green);background:#f6fffb}
-.customer-item.pending-sync{border-color:var(--orange)}
-.cust-avatar{
-  width:44px;height:44px;border-radius:12px;background:var(--blue);
-  color:#fff;display:flex;align-items:center;justify-content:center;
-  font-size:18px;font-weight:800;flex-shrink:0;
+.chip.active{background:var(--blue-m);color:#fff;border-color:var(--blue-m)}
+
+/* ── Search ─────────────────────────────────────────────── */
+.search-wrap{position:relative;margin-bottom:10px;flex-shrink:0}
+.search-wrap input{
+  width:100%;padding:10px 12px 10px 38px;
+  border-radius:11px;border:1.5px solid var(--gray-b);
+  background:var(--surface);font-size:15px;outline:none;
+  -webkit-appearance:none;
+}
+.search-wrap input:focus{border-color:var(--blue-m)}
+.search-icon{
+  position:absolute;left:12px;top:50%;transform:translateY(-50%);
+  color:var(--gray);font-size:15px;pointer-events:none;
+}
+
+/* ── Customer list ──────────────────────────────────────── */
+/* KEY FIX: list is a normal block, not a flex item with flex:1.
+   The PAGE itself scrolls, not a child div inside it. */
+#cust-list{}
+
+.cust-item{
+  background:var(--surface);border-radius:12px;padding:12px 13px;
+  display:flex;align-items:center;gap:11px;margin-bottom:8px;
+  border:2px solid transparent;
+  cursor:pointer;-webkit-user-select:none;user-select:none;
+}
+.cust-item:active{background:#eef4fa}
+.cust-item.done{border-color:var(--green);background:#f6fff9}
+.cust-item.pend{border-color:var(--orange);background:#fff9f5}
+.cust-av{
+  width:42px;height:42px;border-radius:12px;
+  background:var(--blue);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-size:17px;font-weight:900;flex-shrink:0;
 }
 .cust-info{flex:1;min-width:0}
 .cust-name{font-weight:800;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cust-meta{font-size:11px;color:var(--gray);margin-top:2px}
-.cust-reading{text-align:right;flex-shrink:0}
-.cust-reading .reading-val{font-size:13px;font-weight:800;color:var(--blue-mid)}
-.cust-reading .reading-lbl{font-size:10px;color:var(--gray);margin-top:1px}
+.cust-meta{font-size:11px;color:var(--gray);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cust-right{text-align:right;flex-shrink:0}
+.cust-rdg{font-size:13px;font-weight:800;color:var(--blue-m)}
+.cust-rdg-lbl{font-size:10px;color:var(--gray);margin-top:1px}
 
-/* ── Reading form ── */
-.reading-form-header{
-  background:linear-gradient(135deg,var(--blue),var(--blue-mid));
-  color:#fff;border-radius:var(--radius);padding:20px;margin-bottom:14px;
+/* ── Reading form header ────────────────────────────────── */
+.rf-hdr{
+  background:linear-gradient(135deg,var(--blue),var(--blue-m));
+  color:#fff;border-radius:14px;padding:16px;margin-bottom:10px;flex-shrink:0;
 }
-.rfh-name{font-size:19px;font-weight:900;margin-bottom:6px}
-.rfh-meta{font-size:12px;opacity:.8;display:flex;flex-wrap:wrap;gap:8px}
-.rfh-meta span{background:rgba(255,255,255,.2);border-radius:6px;padding:2px 8px}
+.rf-name{font-size:18px;font-weight:900;margin-bottom:6px}
+.rf-chips{display:flex;flex-wrap:wrap;gap:5px;font-size:11px}
+.rf-chip{background:rgba(255,255,255,.2);border-radius:6px;padding:2px 8px;font-weight:600}
+.rf-addr{font-size:11px;opacity:.75;margin-top:5px}
 
-.reading-prev{
-  background:var(--blue-pale);border-radius:var(--radius-sm);padding:14px;
-  text-align:center;margin-bottom:14px;
+.prev-box{
+  background:var(--blue-l);border-radius:12px;padding:12px;
+  text-align:center;margin-bottom:10px;flex-shrink:0;
 }
-.reading-prev .prev-val{font-size:28px;font-weight:900;color:var(--blue)}
-.reading-prev .prev-lbl{font-size:11px;color:var(--gray);margin-top:3px}
+.prev-val{font-size:28px;font-weight:900;color:var(--blue)}
+.prev-lbl{font-size:11px;color:var(--gray);margin-top:2px}
 
 .big-input{
-  width:100%;padding:18px;text-align:center;font-size:32px;font-weight:900;
-  border:2.5px solid var(--gray-border);border-radius:var(--radius-sm);
-  outline:none;color:var(--blue);background:var(--surface);letter-spacing:2px;
-  margin-bottom:8px;
+  width:100%;padding:16px 12px;text-align:center;font-size:34px;font-weight:900;
+  border:2.5px solid var(--gray-b);border-radius:12px;outline:none;
+  color:var(--blue);background:var(--surface);letter-spacing:1px;
+  margin-bottom:8px;-webkit-appearance:none;
 }
-.big-input:focus{border-color:var(--blue-mid);box-shadow:0 0 0 3px rgba(0,119,182,.15)}
+.big-input:focus{border-color:var(--blue-m);box-shadow:0 0 0 3px rgba(0,119,182,.12)}
 
-.consumption-preview{
-  background:var(--green-bg);color:var(--green);border-radius:var(--radius-sm);
-  padding:12px;text-align:center;margin-bottom:14px;
-  font-size:16px;font-weight:800;display:none;
+.cons-box{
+  border-radius:10px;padding:10px;text-align:center;
+  font-size:14px;font-weight:800;margin-bottom:10px;display:none;flex-shrink:0;
 }
-.consumption-preview.warning{background:var(--orange-bg);color:var(--orange)}
-.consumption-preview.error{background:var(--red-bg);color:var(--red)}
+.cons-ok  {background:var(--green-bg);color:var(--green)}
+.cons-warn{background:var(--orange-bg);color:var(--orange)}
+.cons-err {background:var(--red-bg);color:var(--red)}
 
+/* ── Form controls ─────────────────────────────────────── */
+.fg{margin-bottom:10px}
+.fl{display:block;font-size:12px;font-weight:700;color:var(--gray);margin-bottom:4px}
+.fc{
+  width:100%;padding:10px 12px;border-radius:10px;
+  border:1.5px solid var(--gray-b);background:var(--surface);
+  font-size:15px;outline:none;-webkit-appearance:none;
+}
+.fc:focus{border-color:var(--blue-m)}
+
+/* ── Photo button ───────────────────────────────────────── */
 .photo-btn{
-  width:100%;padding:14px;border:2px dashed var(--gray-border);border-radius:var(--radius-sm);
-  background:var(--gray-light);color:var(--gray);font-size:14px;font-weight:600;
-  cursor:pointer;text-align:center;margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:8px;
+  width:100%;padding:13px;border:2px dashed var(--gray-b);border-radius:12px;
+  background:var(--gray-l);color:var(--gray);font-size:14px;font-weight:600;
+  cursor:pointer;text-align:center;display:flex;align-items:center;
+  justify-content:center;gap:7px;margin-bottom:10px;flex-shrink:0;
 }
-.photo-preview{max-width:100%;border-radius:var(--radius-sm);margin-bottom:14px;display:none}
+.photo-preview{width:100%;border-radius:10px;margin-bottom:10px;display:none;max-height:180px;object-fit:cover;flex-shrink:0}
 
-/* ── Buttons ── */
+/* ── Edit meter section ─────────────────────────────────── */
+.edit-section{
+  background:var(--gray-l);border-radius:12px;
+  margin-bottom:10px;overflow:hidden;flex-shrink:0;
+}
+.edit-toggle{
+  width:100%;padding:12px 14px;background:none;border:none;
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:13px;font-weight:800;color:var(--blue);cursor:pointer;
+  text-align:left;
+}
+.edit-toggle:active{background:rgba(0,0,0,.04)}
+.edit-body{padding:0 14px 12px;display:none}
+.edit-body.open{display:block}
+
+/* ── Buttons ────────────────────────────────────────────── */
 .btn{
-  display:flex;align-items:center;justify-content:center;gap:8px;
-  width:100%;padding:15px;border-radius:var(--radius-sm);border:none;
-  font-size:16px;font-weight:800;cursor:pointer;letter-spacing:.3px;
-  transition:opacity .2s,transform .1s;
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  width:100%;padding:14px;border-radius:12px;border:none;
+  font-size:15px;font-weight:800;cursor:pointer;
+  -webkit-user-select:none;user-select:none;font-family:inherit;
+  transition:opacity .15s,transform .1s;
 }
-.btn:active{transform:scale(.98);opacity:.88}
-.btn-primary{background:var(--blue-mid);color:#fff}
+.btn:active{transform:scale(.97);opacity:.85}
+.btn-primary{background:var(--blue-m);color:#fff}
 .btn-success{background:var(--green);color:#fff}
-.btn-danger{background:var(--red);color:#fff}
-.btn-outline{background:none;border:2px solid var(--gray-border);color:var(--gray)}
-.btn-sm{padding:10px;font-size:14px;width:auto;border-radius:8px}
+.btn-danger {background:var(--red);color:#fff}
+.btn-outline{background:none;border:2px solid var(--gray-b);color:var(--gray)}
+.btn-sm{padding:9px 15px;font-size:13px;width:auto;border-radius:9px}
+.btn-row{display:flex;gap:8px;margin-bottom:10px;flex-shrink:0}
+.btn-row .btn{flex:1}
 
-/* ── Queue list ── */
-.queue-item{
-  background:var(--surface);border-radius:var(--radius-sm);padding:14px;
-  box-shadow:var(--shadow);margin-bottom:8px;
-  border-left:4px solid var(--orange);
+/* ── Info / warn boxes ─────────────────────────────────── */
+.info-box{background:var(--blue-l);color:var(--blue-m);border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:10px;line-height:1.6;flex-shrink:0}
+.warn-box{background:var(--orange-bg);color:var(--orange);border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:10px;flex-shrink:0}
+.danger-box{background:var(--red-bg);color:var(--red);border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:10px;flex-shrink:0}
+
+/* ── Queue items ────────────────────────────────────────── */
+.qi{
+  background:var(--surface);border-radius:12px;padding:12px 13px;
+  margin-bottom:8px;border-left:4px solid var(--orange);
 }
-.queue-item.synced{border-color:var(--green);opacity:.6}
-.qi-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
+.qi.synced{border-color:var(--green);opacity:.6}
+.qi-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px}
 .qi-name{font-weight:800;font-size:14px}
-.qi-delete{background:none;border:none;color:var(--red);font-size:20px;cursor:pointer;padding:0;line-height:1}
-.qi-details{font-size:12px;color:var(--gray);display:flex;gap:12px;flex-wrap:wrap}
-.qi-reading{font-weight:700;font-size:15px;color:var(--blue-mid)}
+.qi-status{font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px}
+.qi-pend{background:var(--orange-bg);color:var(--orange)}
+.qi-done{background:var(--green-bg);color:var(--green)}
+.qi-del{background:none;border:none;color:var(--red);font-size:22px;cursor:pointer;padding:0;line-height:1;margin-left:6px}
+.qi-meta{font-size:12px;color:var(--gray);display:flex;flex-wrap:wrap;gap:8px;margin-top:3px}
+.qi-rdg{font-weight:800;color:var(--blue-m)}
 
-/* ── Sync panel ── */
-.sync-card{border-radius:var(--radius);overflow:hidden;margin-bottom:14px;box-shadow:var(--shadow)}
-.sync-header{background:var(--blue);color:#fff;padding:16px}
-.sync-header h2{font-size:16px;font-weight:800;margin-bottom:4px}
-.sync-header p{font-size:12px;opacity:.8}
-.sync-body{background:var(--surface);padding:16px}
-
-.server-input{display:flex;gap:8px;margin-bottom:12px}
-.server-input input{
-  flex:1;padding:11px 14px;border-radius:var(--radius-sm);
-  border:1.5px solid var(--gray-border);font-size:14px;outline:none;
-}
-.server-input input:focus{border-color:var(--blue-mid)}
-
+/* ── Sync log ───────────────────────────────────────────── */
 .sync-log{
-  background:var(--gray-light);border-radius:var(--radius-sm);
-  padding:12px;font-size:12px;font-family:monospace;max-height:180px;overflow-y:auto;
-  color:#223;display:none;
+  background:#1a2a3a;border-radius:10px;padding:11px;
+  font-size:11px;font-family:monospace;max-height:150px;
+  overflow-y:auto;color:#90e0ef;margin-bottom:10px;flex-shrink:0;
 }
-.log-line{padding:2px 0}
-.log-ok{color:var(--green)}
-.log-err{color:var(--red)}
-.log-info{color:var(--blue)}
+.l-ok{color:#52b788}.l-err{color:#e63946}.l-info{color:#90e0ef}
 
-/* ── Toast ── */
-.toast{
-  position:fixed;bottom:calc(70px + env(safe-area-inset-bottom));left:50%;
-  transform:translateX(-50%) translateY(20px);
-  background:#1a2a3a;color:#fff;border-radius:10px;padding:11px 20px;
-  font-size:14px;font-weight:600;white-space:nowrap;z-index:9999;
-  opacity:0;transition:all .3s;pointer-events:none;
+/* ── Session info ───────────────────────────────────────── */
+.si-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:7px 0;border-bottom:1px solid var(--gray-b);font-size:13px;
 }
-.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.si-row:last-child{border-bottom:none}
 
-/* ── Login ── */
-#login-screen{background:var(--blue);justify-content:center;align-items:center;padding:24px}
-.login-box{background:#fff;border-radius:var(--radius);padding:28px;width:100%;max-width:360px}
-.login-logo{text-align:center;margin-bottom:24px}
-.login-logo .icon{font-size:48px;margin-bottom:8px}
-.login-logo h1{font-size:22px;font-weight:900;color:var(--blue);margin:0}
-.login-logo p{color:var(--gray);font-size:12px;margin:4px 0 0}
-.form-group{margin-bottom:14px}
-.form-label{display:block;font-size:12px;font-weight:700;margin-bottom:5px;color:var(--gray)}
-.form-control{
-  width:100%;padding:12px 14px;border-radius:var(--radius-sm);
-  border:1.5px solid var(--gray-border);font-size:15px;outline:none;
+/* ── Empty state ────────────────────────────────────────── */
+.empty{text-align:center;padding:40px 16px;color:var(--gray)}
+.empty-icon{font-size:44px;margin-bottom:10px}
+.empty-title{font-size:15px;font-weight:700;color:#334;margin-bottom:4px}
+.empty-sub{font-size:13px;line-height:1.5}
+
+/* ── Back button ────────────────────────────────────────── */
+.back-btn{
+  display:inline-flex;align-items:center;gap:5px;
+  background:none;border:none;color:var(--blue-m);
+  font-size:14px;font-weight:800;cursor:pointer;
+  padding:0;margin-bottom:12px;flex-shrink:0;
 }
-.form-control:focus{border-color:var(--blue-mid)}
-.error-msg{color:var(--red);font-size:12px;margin-top:8px;display:none}
 
-/* ── Empty state ── */
-.empty{text-align:center;padding:40px 20px;color:var(--gray)}
-.empty .empty-icon{font-size:48px;margin-bottom:12px}
-.empty p{font-size:14px}
+/* ── Toast ──────────────────────────────────────────────── */
+#toast{
+  position:fixed;
+  bottom:calc(56px + var(--safe-b) + 8px);
+  left:50%;transform:translateX(-50%) translateY(16px);
+  background:rgba(26,42,58,.95);color:#fff;border-radius:10px;
+  padding:10px 18px;font-size:13px;font-weight:700;
+  white-space:nowrap;z-index:9999;opacity:0;
+  transition:opacity .25s,transform .25s;pointer-events:none;
+  max-width:88vw;white-space:normal;text-align:center;
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
-/* ── Progress ── */
-.progress-wrap{height:6px;background:var(--gray-light);border-radius:3px;overflow:hidden;margin:10px 0}
-.progress-fill{height:100%;background:var(--blue-mid);border-radius:3px;transition:width .4s}
+/* ── Login ──────────────────────────────────────────────── */
+#login{
+  position:fixed;inset:0;background:var(--blue);
+  display:flex;align-items:center;justify-content:center;
+  padding:20px;z-index:100;
+}
+.login-box{
+  background:#fff;border-radius:18px;padding:26px;
+  width:100%;max-width:360px;box-shadow:0 12px 40px rgba(0,0,0,.3);
+}
+.login-logo{text-align:center;margin-bottom:20px}
+.login-logo .li{font-size:44px;margin-bottom:6px}
+.login-logo h1{font-size:21px;font-weight:900;color:var(--blue);margin:0}
+.login-logo p{color:var(--gray);font-size:12px;margin:3px 0 0}
+.err{color:var(--red);font-size:12px;text-align:center;margin:5px 0;display:none}
 
-/* Animations */
-@keyframes fadeSlideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-.fade-in{animation:fadeSlideUp .3s ease both}
-
-/* Safe area */
-.topbar-inner{padding-top:env(safe-area-inset-top,0)}
-.topbar{padding-top:0}
+/* ── Animations ─────────────────────────────────────────── */
+@keyframes slideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.anim{animation:slideUp .25s ease both}
 </style>
 </head>
 <body>
 
-<!-- ═══════════════════════════════════════════════════════════════
-     LOGIN SCREEN
-═══════════════════════════════════════════════════════════════ -->
-<div class="screen active" id="login-screen">
+<!-- LOGIN -->
+<div id="login">
   <div class="login-box">
     <div class="login-logo">
-      <div class="icon">💧</div>
+      <div class="li">💧</div>
       <h1>AquaBill Field</h1>
-      <p>Staff Meter Reading App</p>
+      <p>Meter Reading App · Works Offline</p>
     </div>
-
-    <div class="form-group">
-      <label class="form-label">Server URL</label>
-      <input type="url" id="server-url" class="form-control" placeholder="http://yourserver.com/aquabill">
+    <div class="fg">
+      <label class="fl">Server URL</label>
+      <input type="url" id="l-url" class="fc" placeholder="http://192.168.1.x/aquabill">
     </div>
-    <div class="form-group">
-      <label class="form-label">Email</label>
-      <input type="email" id="login-email" class="form-control" placeholder="staff@barangay.gov" autocomplete="email">
+    <div class="fg">
+      <label class="fl">Email</label>
+      <input type="email" id="l-email" class="fc" placeholder="staff@barangay.gov" autocomplete="email">
     </div>
-    <div class="form-group">
-      <label class="form-label">Password</label>
-      <input type="password" id="login-password" class="form-control" placeholder="••••••••" autocomplete="current-password">
+    <div class="fg" style="margin-bottom:6px">
+      <label class="fl">Password</label>
+      <input type="password" id="l-pass" class="fc" placeholder="••••••••" autocomplete="current-password">
     </div>
-    <div class="error-msg" id="login-error"></div>
-    <button class="btn btn-primary" id="login-btn" onclick="doLogin()" style="margin-top:4px">
-      <span id="login-btn-text">Sign In</span>
+    <div class="err" id="l-err"></div>
+    <button class="btn btn-primary" id="l-btn" onclick="doLogin()" style="margin-top:10px">
+      <span id="l-btn-txt">Sign In</span>
     </button>
-    <p style="font-size:11px;color:var(--gray);text-align:center;margin-top:14px">
-      Your data is saved locally.<br>Works offline after first login.
+    <p style="font-size:11px;color:var(--gray);text-align:center;margin-top:12px;line-height:1.6">
+      Works offline after first login.<br>Readings sync automatically when online.
     </p>
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════════════
-     MAIN APP SCREEN
-═══════════════════════════════════════════════════════════════ -->
-<div class="screen" id="app-screen">
+<!-- APP -->
+<div id="app" style="display:none">
 
   <!-- TOPBAR -->
-  <div class="topbar">
-    <div class="topbar-inner">
-      <span style="font-size:22px">💧</span>
-      <div style="flex:1">
-        <div style="font-weight:800;font-size:16px;line-height:1.2">AquaBill Field</div>
-        <div style="font-size:10px;opacity:.7" id="topbar-user">Loading...</div>
-      </div>
-      <div class="online-dot" id="online-dot" title="Connection status"></div>
-      <button class="topbar-btn" onclick="refreshCustomers()" title="Refresh customers">↻</button>
-      <button class="topbar-btn" onclick="doLogout()" title="Logout" style="font-size:14px">⎋</button>
+  <div id="topbar">
+    <span style="font-size:21px;flex-shrink:0">💧</span>
+    <div style="flex:1;min-width:0">
+      <div id="tb-title" style="font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">AquaBill Field</div>
+      <div id="tb-sub" style="font-size:10px;opacity:.7">Loading…</div>
     </div>
+    <div class="net-dot" id="net-dot" title="Connection"></div>
+    <button class="tb-btn" onclick="handleRefresh()" title="Refresh">↻</button>
+    <button class="tb-btn" onclick="doLogout()" title="Logout" style="font-size:13px">⎋</button>
   </div>
 
-  <!-- CONTENT PANELS (one per tab) -->
-  <div class="scroll-content fade-in" id="panel-home" style="flex:1;overflow-y:auto">
+  <!-- CONTENT (flex:1, min-height:0) -->
+  <div id="content">
 
-    <!-- Stats -->
-    <div class="stat-strip" id="home-stats">
-      <div class="stat-box"><div class="val" id="stat-total">—</div><div class="lbl">Customers</div></div>
-      <div class="stat-box"><div class="val" id="stat-done" style="color:var(--green)">0</div><div class="lbl">Recorded</div></div>
-      <div class="stat-box"><div class="val" id="stat-queue" style="color:var(--orange)">0</div><div class="lbl">Pending Sync</div></div>
-    </div>
-
-    <!-- Progress -->
-    <div id="progress-section" style="margin-bottom:14px;display:none">
-      <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:4px">
-        <span style="color:var(--gray)">Today's Progress</span>
-        <span id="progress-text" style="color:var(--blue-mid)">0%</span>
-      </div>
-      <div class="progress-wrap"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
-    </div>
-
-    <!-- Search -->
-    <div class="search-wrap">
-      <span class="search-icon">🔍</span>
-      <input type="search" id="customer-search" placeholder="Search customer or meter..." oninput="filterCustomers()">
-    </div>
-
-    <!-- Filter chips -->
-    <div style="display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;padding-bottom:4px">
-      <button class="btn btn-sm btn-primary" style="white-space:nowrap;flex-shrink:0" onclick="setFilter('all',this)">All</button>
-      <button class="btn btn-sm btn-outline" style="white-space:nowrap;flex-shrink:0;color:var(--orange)" onclick="setFilter('pending',this)">⏳ Pending</button>
-      <button class="btn btn-sm btn-outline" style="white-space:nowrap;flex-shrink:0;color:var(--green)" onclick="setFilter('done',this)">✅ Done</button>
-    </div>
-
-    <!-- Customer list -->
-    <div id="customer-list">
-      <div class="empty"><div class="empty-icon">⏳</div><p>Loading customers...</p></div>
-    </div>
-  </div>
-
-  <!-- READING ENTRY PANEL (hidden by default) -->
-  <div class="scroll-content fade-in" id="panel-reading" style="flex:1;overflow-y:auto;display:none">
-    <button onclick="closeReadingPanel()" style="background:none;border:none;color:var(--blue);font-size:14px;font-weight:700;cursor:pointer;margin-bottom:12px;display:flex;align-items:center;gap:4px">
-      ← Back to list
-    </button>
-
-    <div class="reading-form-header">
-      <div class="rfh-name" id="rf-name">—</div>
-      <div class="rfh-meta">
-        <span id="rf-id">—</span>
-        <span id="rf-meter">—</span>
-        <span id="rf-address" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</span>
-      </div>
-    </div>
-
-    <div class="reading-prev">
-      <div class="prev-val" id="rf-prev">0</div>
-      <div class="prev-lbl">Previous Reading (m³)</div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">Enter Current Reading</div>
-      <input type="number" class="big-input" id="rf-current" placeholder="0"
-             inputmode="decimal" min="0" step="0.01"
-             oninput="updateConsumptionPreview()">
-
-      <div class="consumption-preview" id="consumption-preview">
-        💧 Consumption: <strong id="consumption-val">0</strong> m³
+    <!-- PAGE: CUSTOMERS -->
+    <div class="page active" id="pg-customers">
+      <div class="stat-row anim">
+        <div class="stat-box"><div class="stat-val" id="s-total" style="color:var(--blue-m)">—</div><div class="stat-lbl">Total</div></div>
+        <div class="stat-box"><div class="stat-val" id="s-done"  style="color:var(--green)">0</div><div class="stat-lbl">Done Today</div></div>
+        <div class="stat-box"><div class="stat-val" id="s-pend"  style="color:var(--orange)">0</div><div class="stat-lbl">To Sync</div></div>
       </div>
 
-      <div class="form-group" style="margin-bottom:12px">
-        <label class="form-label">Reading Date</label>
-        <input type="date" class="form-control" id="rf-date">
-      </div>
-
-      <div class="form-group" style="margin-bottom:12px">
-        <label class="form-label">Notes (optional)</label>
-        <input type="text" class="form-control" id="rf-notes" placeholder="e.g. Meter damaged, estimated...">
-      </div>
-
-      <!-- Photo capture -->
-      <label class="photo-btn" for="rf-photo">
-        📷 Take Meter Photo (optional)
-      </label>
-      <input type="file" id="rf-photo" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(this)">
-      <img id="photo-preview" class="photo-preview" alt="Meter photo">
-
-      <button class="btn btn-success" onclick="saveReading()" style="margin-bottom:10px">
-        💾 Save Reading
-      </button>
-      <button class="btn btn-outline" onclick="closeReadingPanel()">Cancel</button>
-    </div>
-  </div>
-
-  <!-- QUEUE PANEL -->
-  <div class="scroll-content fade-in" id="panel-queue" style="flex:1;overflow-y:auto;display:none">
-    <div class="card" id="queue-summary-card">
-      <div class="card-title">📋 Pending Sync Queue</div>
-      <div id="queue-summary-text" style="font-size:13px;color:var(--gray);margin-bottom:12px">Loading...</div>
-      <button class="btn btn-primary" onclick="syncNow()" id="sync-btn">
-        ☁️ Sync to Server
-      </button>
-    </div>
-
-    <div class="sync-log" id="sync-log"></div>
-
-    <div id="queue-list"></div>
-  </div>
-
-  <!-- SYNC/SETTINGS PANEL -->
-  <div class="scroll-content fade-in" id="panel-sync" style="flex:1;overflow-y:auto;display:none">
-    <div class="sync-card">
-      <div class="sync-header">
-        <h2>⚙️ Connection & Sync</h2>
-        <p>Configure server and manage sync settings</p>
-      </div>
-      <div class="sync-body">
-        <div class="form-group">
-          <label class="form-label">Server URL</label>
-          <div class="server-input">
-            <input type="url" id="settings-server-url" class="form-control" placeholder="http://yourserver.com/aquabill">
-            <button class="btn btn-sm btn-outline" onclick="testConnection()" style="flex-shrink:0;white-space:nowrap">Test</button>
-          </div>
-          <div style="font-size:11px;color:var(--gray)">e.g. http://192.168.1.10/aquabill</div>
+      <div id="pg-progress" style="display:none;flex-shrink:0">
+        <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;margin-bottom:3px">
+          <span style="color:var(--gray)">Today's Progress</span>
+          <span id="pg-pct" style="color:var(--blue-m)">0%</span>
         </div>
-        <button class="btn btn-primary" onclick="saveSettings()" style="margin-bottom:10px">💾 Save Settings</button>
-        <button class="btn btn-outline" onclick="refreshCustomers()" style="margin-bottom:10px">↻ Refresh Customer List</button>
-        <button class="btn btn-outline" onclick="syncNow()">☁️ Sync Pending Readings</button>
+        <div class="progress-wrap"><div class="progress-fill" id="pg-fill" style="width:0%"></div></div>
+      </div>
+
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="search" id="c-search" placeholder="Search name or meter…" oninput="renderList()">
+      </div>
+
+      <div class="chips" id="filter-chips">
+        <div class="chip active" data-f="all"  onclick="setFilter(this)">All</div>
+        <div class="chip"        data-f="pend" onclick="setFilter(this)">⏳ Pending</div>
+        <div class="chip"        data-f="done" onclick="setFilter(this)">✅ Done</div>
+      </div>
+
+      <!-- Customer list — plain block, page itself scrolls -->
+      <div id="cust-list">
+        <div class="empty"><div class="empty-icon">⏳</div><div class="empty-title">Loading customers…</div></div>
       </div>
     </div>
 
-    <div class="sync-log" id="settings-log" style="display:block;min-height:60px"></div>
+    <!-- PAGE: READING FORM -->
+    <div class="page" id="pg-reading">
+      <button class="back-btn" onclick="closeReading()">← Back to Customers</button>
 
-    <div class="card">
-      <div class="card-title">📊 Session Info</div>
-      <div id="session-info" style="font-size:13px;display:flex;flex-direction:column;gap:8px"></div>
+      <div class="rf-hdr anim">
+        <div class="rf-name" id="rf-name">—</div>
+        <div class="rf-chips">
+          <span class="rf-chip" id="rf-id">—</span>
+          <span class="rf-chip" id="rf-meter">—</span>
+          <span class="rf-chip" id="rf-status">Active</span>
+        </div>
+        <div class="rf-addr" id="rf-addr">—</div>
+      </div>
+
+      <!-- Edit meter section -->
+      <div class="edit-section">
+        <button class="edit-toggle" onclick="toggleEdit()" type="button">
+          ✏️ Edit Meter / Customer Details
+          <span id="edit-arrow">＋</span>
+        </button>
+        <div class="edit-body" id="edit-body">
+          <div class="fg"><label class="fl">Meter Number</label><input type="text" id="em-meter" class="fc" placeholder="e.g. M-0011"></div>
+          <div class="fg"><label class="fl">Customer Name</label><input type="text" id="em-name" class="fc"></div>
+          <div class="fg" style="margin-bottom:10px"><label class="fl">Address</label><input type="text" id="em-addr" class="fc"></div>
+          <div class="btn-row" style="margin-bottom:0">
+            <button class="btn btn-outline btn-sm" onclick="toggleEdit()" type="button">Cancel</button>
+            <button class="btn btn-primary btn-sm" onclick="saveEditMeter()" type="button">💾 Save</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="prev-box anim">
+        <div class="prev-val" id="rf-prev">0</div>
+        <div class="prev-lbl">Previous Reading (m³)</div>
+      </div>
+
+      <div class="card" style="flex-shrink:0">
+        <div class="card-title">Enter Current Reading</div>
+        <input type="number" class="big-input" id="rf-curr"
+               inputmode="decimal" step="0.01" min="0" placeholder="0.00"
+               oninput="updatePreview()">
+        <div class="cons-box" id="cons-box">
+          💧 Consumption: <span id="cons-val">0</span> m³
+        </div>
+        <div class="fg">
+          <label class="fl">Reading Date</label>
+          <input type="date" class="fc" id="rf-date">
+        </div>
+        <div class="fg" style="margin-bottom:10px">
+          <label class="fl">Notes (optional)</label>
+          <input type="text" class="fc" id="rf-notes" placeholder="e.g. Meter damaged…">
+        </div>
+      </div>
+
+      <label class="photo-btn" for="rf-photo">
+        <span id="photo-lbl">📷 Add Meter Photo (optional)</span>
+      </label>
+      <input type="file" id="rf-photo" accept="image/*" capture="environment"
+             style="display:none" onchange="handlePhoto(this)">
+      <img id="photo-prev" class="photo-preview" alt="Meter photo">
+
+      <div class="btn-row">
+        <button class="btn btn-outline" onclick="closeReading()" type="button">Cancel</button>
+        <button class="btn btn-success" onclick="saveReading()" type="button">💾 Save Reading</button>
+      </div>
     </div>
 
-    <div class="card" style="margin-top:12px">
-      <div class="card-title" style="color:var(--red)">⚠️ Data Management</div>
-      <button class="btn btn-outline" onclick="clearSyncedReadings()" style="color:var(--orange);border-color:var(--orange);margin-bottom:8px">
-        🧹 Clear Synced Records
-      </button>
-      <button class="btn btn-danger" onclick="hardReset()">
-        🗑️ Reset All Local Data
-      </button>
+    <!-- PAGE: QUEUE -->
+    <div class="page" id="pg-queue">
+      <div class="card">
+        <div class="card-title">📋 Sync Queue</div>
+        <div id="q-summary" style="font-size:13px;color:var(--gray);margin-bottom:10px">Loading…</div>
+        <button class="btn btn-primary" id="sync-btn" onclick="syncNow()" style="margin-bottom:8px" type="button">☁️ Sync to Server</button>
+        <button class="btn btn-outline" onclick="toggleLog()" type="button" style="font-size:13px;padding:9px">📄 Show Log</button>
+      </div>
+      <div class="sync-log" id="sync-log" style="display:none"></div>
+      <div id="queue-list"></div>
     </div>
-  </div>
 
-  <!-- BOTTOM TAB BAR -->
-  <div class="tabbar">
-    <button class="tab active" id="tab-home" onclick="switchTab('home')">
+    <!-- PAGE: SETTINGS -->
+    <div class="page" id="pg-settings">
+      <div class="card">
+        <div class="card-title">⚙️ Server Connection</div>
+        <div class="fg">
+          <label class="fl">Server URL</label>
+          <input type="url" id="st-url" class="fc" placeholder="http://192.168.1.x/aquabill">
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-outline btn-sm" onclick="testConn()" type="button">🔌 Test</button>
+          <button class="btn btn-primary btn-sm" onclick="saveSettings()" type="button">💾 Save</button>
+        </div>
+        <div class="sync-log" id="st-log" style="display:block;min-height:40px;margin-bottom:0"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📊 Session Info</div>
+        <div id="sess-info"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title" style="color:var(--red)">⚠️ Danger Zone</div>
+        <button class="btn btn-outline" onclick="clearSynced()" type="button"
+                style="color:var(--orange);border-color:var(--orange);margin-bottom:8px">
+          🧹 Clear Synced Records
+        </button>
+        <button class="btn btn-danger" onclick="hardReset()" type="button">🗑️ Reset All Data</button>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+
+  <!-- TABBAR -->
+  <div id="tabbar">
+    <button class="tab-btn active" id="tab-customers" onclick="goTab('customers')" type="button">
       <div class="tab-icon-wrap"><span class="tab-icon">🏠</span></div>
       <span>Customers</span>
     </button>
-    <button class="tab" id="tab-queue" onclick="switchTab('queue')">
+    <button class="tab-btn" id="tab-queue" onclick="goTab('queue')" type="button">
       <div class="tab-icon-wrap">
         <span class="tab-icon">📋</span>
-        <span class="tab-badge" id="queue-badge" style="display:none">0</span>
+        <span class="tab-badge" id="q-badge">0</span>
       </div>
       <span>Queue</span>
     </button>
-    <button class="tab" id="tab-sync" onclick="switchTab('sync')">
+    <button class="tab-btn" id="tab-settings" onclick="goTab('settings')" type="button">
       <div class="tab-icon-wrap"><span class="tab-icon">⚙️</span></div>
       <span>Settings</span>
     </button>
   </div>
-</div>
 
-<!-- Toast -->
-<div class="toast" id="toast"></div>
+</div><!-- /app -->
 
-<!-- ═══════════════════════════════════════════════════════════════
-     JAVASCRIPT — Full App Logic
-═══════════════════════════════════════════════════════════════ -->
+<div id="toast"></div>
+
 <script>
 'use strict';
 
-// ── State ─────────────────────────────────────────────────────────────────────
-let DB;                   // IndexedDB instance
-let customers   = [];     // Active customer list (fetched from server / cached)
-let queue       = [];     // Pending readings not yet synced
-let todayReadings= {};    // Map: customer_id → reading recorded today
-let currentCustomer = null;
-let activeFilter = 'all';
-let isOnline     = navigator.onLine;
-let syncing      = false;
-let photoDataUrl = null;
+// ── DB ──────────────────────────────────────────────────────────────────────
+const DB_NAME   = 'aqf_v3';
+const DB_VER    = 1;
+const SQ        = 'queue';
+const SC        = 'cache';
+const SE        = 'edits';
+let   DB;
 
-const DB_NAME    = 'aquabill_field';
-const DB_VERSION = 2;
-const STORE_QUEUE= 'reading_queue';
-const STORE_CACHE= 'app_cache';
-
-// ── IndexedDB Setup ───────────────────────────────────────────────────────────
-function openDB() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onupgradeneeded = e => {
-      const db = e.target.result;
-      if (!db.objectStoreNames.contains(STORE_QUEUE)) {
-        const qs = db.createObjectStore(STORE_QUEUE, { keyPath: 'local_id' });
-        qs.createIndex('synced', 'synced', { unique: false });
-        qs.createIndex('customer_id', 'customer_id', { unique: false });
-      }
-      if (!db.objectStoreNames.contains(STORE_CACHE)) {
-        db.createObjectStore(STORE_CACHE, { keyPath: 'key' });
-      }
+function openDB(){
+  return new Promise((ok,fail)=>{
+    const r=indexedDB.open(DB_NAME,DB_VER);
+    r.onupgradeneeded=e=>{
+      const db=e.target.result;
+      if(!db.objectStoreNames.contains(SQ)) db.createObjectStore(SQ,{keyPath:'lid'});
+      if(!db.objectStoreNames.contains(SC)) db.createObjectStore(SC,{keyPath:'k'});
+      if(!db.objectStoreNames.contains(SE)) db.createObjectStore(SE,{keyPath:'cid'});
     };
-    req.onsuccess = e => resolve(e.target.result);
-    req.onerror   = e => reject(e.target.error);
+    r.onsuccess=e=>ok(e.target.result);
+    r.onerror=e=>fail(e.target.error);
   });
 }
+const put=(s,o)=>new Promise((ok,f)=>{const t=DB.transaction(s,'readwrite');const r=t.objectStore(s).put(o);r.onsuccess=()=>ok();r.onerror=()=>f(r.error)});
+const getAll=(s)=>new Promise((ok,f)=>{const t=DB.transaction(s,'readonly');const r=t.objectStore(s).getAll();r.onsuccess=()=>ok(r.result);r.onerror=()=>f(r.error)});
+const del=(s,k)=>new Promise((ok,f)=>{const t=DB.transaction(s,'readwrite');const r=t.objectStore(s).delete(k);r.onsuccess=()=>ok();r.onerror=()=>f(r.error)});
+const clear=(s)=>new Promise((ok,f)=>{const t=DB.transaction(s,'readwrite');const r=t.objectStore(s).clear();r.onsuccess=()=>ok();r.onerror=()=>f(r.error)});
 
-function dbPut(store, obj) {
-  return new Promise((resolve, reject) => {
-    const tx  = DB.transaction(store, 'readwrite');
-    const req = tx.objectStore(store).put(obj);
-    req.onsuccess = () => resolve(req.result);
-    req.onerror   = () => reject(req.error);
+// ── State ────────────────────────────────────────────────────────────────────
+let customers  = [];
+let queue      = [];
+let todayMap   = {};
+let curCust    = null;
+let photoB64   = null;
+let isOnline   = navigator.onLine;
+let syncing    = false;
+let activeTab  = 'customers';
+let activeFilter = 'all';
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+const getUrl  = ()=>(localStorage.getItem('srv_url')||'').replace(/\/$/,'');
+const getToken= ()=>localStorage.getItem('auth_tok')||'';
+const getUser = ()=>{try{return JSON.parse(localStorage.getItem('usr_data')||'{}')}catch{return{}}};
+const today   = ()=>new Date().toISOString().slice(0,10);
+const lid     = ()=>'r'+Date.now()+'x'+Math.random().toString(36).slice(2,5);
+const esc     = s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+function toast(msg,dur=3000){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.classList.add('show');
+  clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),dur);
+}
+function log(id,msg,t='info'){
+  const el=document.getElementById(id);if(!el)return;
+  el.style.display='block';
+  const d=document.createElement('div');
+  d.className='l-'+t;
+  d.textContent='['+new Date().toLocaleTimeString()+'] '+msg;
+  el.appendChild(d);el.scrollTop=el.scrollHeight;
+}
+
+// ── Network ──────────────────────────────────────────────────────────────────
+function updateNet(){
+  isOnline=navigator.onLine;
+  document.getElementById('net-dot').classList.toggle('off',!isOnline);
+  const u=getUser();
+  document.getElementById('tb-sub').textContent=(u.name||'Staff')+' · '+(isOnline?'Online':'Offline');
+}
+window.addEventListener('online',()=>{updateNet();toast('🌐 Online — syncing…');setTimeout(syncNow,1000)});
+window.addEventListener('offline',()=>{updateNet();toast('📵 Offline — saved locally')});
+
+// ── API ──────────────────────────────────────────────────────────────────────
+async function api(action,method='GET',body=null){
+  const url=getUrl()+'/api/sync.php?action='+action;
+  const o={method,headers:{'Content-Type':'application/json','X-API-Token':getToken()}};
+  if(body)o.body=JSON.stringify(body);
+  const r=await fetch(url,{...o,signal:AbortSignal.timeout(12000)});
+  const d=await r.json();
+  if(!d.ok)throw new Error(d.error||'API error');
+  return d.data;
+}
+
+// ── LOGIN ────────────────────────────────────────────────────────────────────
+async function doLogin(){
+  const url  =document.getElementById('l-url').value.trim().replace(/\/$/,'');
+  const email=document.getElementById('l-email').value.trim();
+  const pass =document.getElementById('l-pass').value;
+  const errEl=document.getElementById('l-err');
+  errEl.style.display='none';
+  if(!url||!email||!pass){errEl.textContent='Please fill all fields.';errEl.style.display='block';return}
+  const btn=document.getElementById('l-btn-txt');
+  btn.textContent='Signing in…';document.getElementById('l-btn').disabled=true;
+  try{
+    localStorage.setItem('srv_url',url);
+    const r=await fetch(url+'/api/sync.php?action=login',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({email,password:pass}),signal:AbortSignal.timeout(10000)
+    });
+    const d=await r.json();
+    if(!d.ok)throw new Error(d.error);
+    localStorage.setItem('auth_tok',d.data.token);
+    localStorage.setItem('usr_data',JSON.stringify(d.data.user));
+    startApp();
+    loadCustomers(true);
+  }catch(e){
+    errEl.textContent=e.message.includes('fetch')||e.message.includes('Failed')
+      ?'Cannot reach server. Check URL and connection.':e.message;
+    errEl.style.display='block';
+  }finally{btn.textContent='Sign In';document.getElementById('l-btn').disabled=false}
+}
+document.getElementById('l-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
+document.getElementById('l-email').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('l-pass').focus()});
+
+function doLogout(){
+  if(!confirm('Log out? Unsynced readings remain saved.'))return;
+  localStorage.removeItem('auth_tok');localStorage.removeItem('usr_data');
+  document.getElementById('app').style.display='none';
+  document.getElementById('login').style.display='flex';
+}
+
+// ── START APP ────────────────────────────────────────────────────────────────
+function startApp(){
+  document.getElementById('login').style.display='none';
+  document.getElementById('app').style.display='flex';
+  document.getElementById('st-url').value=getUrl();
+  updateNet();
+  refreshSessionInfo();
+}
+
+// ── TAB NAVIGATION ─────────────────────────────────────────────────────────
+// Simple: hide all pages, show the one that matches.
+// No position:absolute, no z-index tricks, just display:none/flex.
+function goTab(tab){
+  activeTab=tab;
+  // Update tab buttons
+  ['customers','queue','settings'].forEach(t=>{
+    document.getElementById('tab-'+t)?.classList.toggle('active',t===tab);
   });
-}
-
-function dbGetAll(store) {
-  return new Promise((resolve, reject) => {
-    const tx  = DB.transaction(store, 'readonly');
-    const req = tx.objectStore(store).getAll();
-    req.onsuccess = () => resolve(req.result);
-    req.onerror   = () => reject(req.error);
+  // Show/hide pages
+  ['customers','queue','settings'].forEach(t=>{
+    const pg=document.getElementById('pg-'+t);
+    if(pg)pg.classList.toggle('active',t===tab);
   });
+  // Always hide reading form when switching tabs
+  document.getElementById('pg-reading')?.classList.remove('active');
+  // Lazy-load page data
+  if(tab==='queue')renderQueue();
+  if(tab==='settings')refreshSessionInfo();
+  if(tab==='customers')renderList();
 }
 
-function dbDelete(store, key) {
-  return new Promise((resolve, reject) => {
-    const tx  = DB.transaction(store, 'readwrite');
-    const req = tx.objectStore(store).delete(key);
-    req.onsuccess = () => resolve();
-    req.onerror   = () => reject(req.error);
+function handleRefresh(){
+  if(activeTab==='customers'){toast('⟳ Refreshing…');loadCustomers(true)}
+  else if(activeTab==='queue')syncNow();
+  else testConn();
+}
+
+// ── CUSTOMERS ───────────────────────────────────────────────────────────────
+async function loadCustomers(fetchFresh=false){
+  // Load from cache first (instant)
+  try{
+    const cached=(await getAll(SC)).find(x=>x.k==='cust');
+    if(cached?.v?.length){
+      customers=cached.v;
+      await applyEdits();
+      await buildTodayMap();
+      renderList();
+    }
+  }catch(e){}
+
+  if(fetchFresh&&isOnline){
+    try{
+      const d=await api('customers');
+      customers=d.customers||[];
+      await put(SC,{k:'cust',v:customers,ts:Date.now()});
+      await applyEdits();
+      await buildTodayMap();
+      renderList();
+      toast('✅ '+customers.length+' customers loaded');
+    }catch(e){
+      if(!customers.length){
+        document.getElementById('cust-list').innerHTML=
+          `<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-title">Cannot load customers</div><div class="empty-sub">${esc(e.message)}</div></div>`;
+      }else toast('⚠️ Refresh failed — using cached data');
+    }
+  }else if(!customers.length){
+    document.getElementById('cust-list').innerHTML=
+      `<div class="empty"><div class="empty-icon">📵</div><div class="empty-title">No cached data</div><div class="empty-sub">Connect to internet and tap ↻ to load customers.</div></div>`;
+  }
+}
+
+async function applyEdits(){
+  try{
+    const edits=await getAll(SE);
+    edits.forEach(e=>{
+      const i=customers.findIndex(c=>c.id===e.cid);
+      if(i<0)return;
+      if(e.meter_no)customers[i].meter_no=e.meter_no;
+      if(e.name)    customers[i].name    =e.name;
+      if(e.address) customers[i].address =e.address;
+    });
+  }catch(e){}
+}
+
+async function buildTodayMap(){
+  todayMap={};
+  const t=today();
+  queue=await getAll(SQ);
+  queue.forEach(r=>{if(r.rdate===t)todayMap[r.cid]=r});
+  updateBadge();
+}
+
+function updateBadge(){
+  const n=queue.filter(r=>!r.synced).length;
+  const b=document.getElementById('q-badge');
+  if(b){b.textContent=n;b.style.display=n>0?'flex':'none'}
+  const sp=document.getElementById('s-pend');
+  if(sp)sp.textContent=n;
+}
+
+function setFilter(el){
+  activeFilter=el.dataset.f||'all';
+  document.querySelectorAll('#filter-chips .chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  renderList();
+}
+
+function renderList(){
+  const q=(document.getElementById('c-search')?.value||'').toLowerCase();
+  const el=document.getElementById('cust-list');
+  const total=customers.length;
+  const doneN=customers.filter(c=>!!todayMap[c.id]).length;
+  const pendN=queue.filter(r=>!r.synced).length;
+  const stT=document.getElementById('s-total');
+  const stD=document.getElementById('s-done');
+  if(stT)stT.textContent=total;
+  if(stD)stD.textContent=doneN;
+  updateBadge();
+  const pa=document.getElementById('pg-progress');
+  if(pa)pa.style.display=total>0?'':'none';
+  const pct=total>0?Math.round(doneN/total*100):0;
+  const pf=document.getElementById('pg-fill');const pp=document.getElementById('pg-pct');
+  if(pf)pf.style.width=pct+'%';if(pp)pp.textContent=pct+'%';
+
+  let filtered=customers.filter(c=>{
+    const mq=!q||c.name.toLowerCase().includes(q)||(c.meter_no||'').toLowerCase().includes(q)||(c.id||'').toLowerCase().includes(q);
+    const done=!!todayMap[c.id];
+    if(activeFilter==='done'&&!done)return false;
+    if(activeFilter==='pend'&&done)return false;
+    return mq;
   });
-}
 
-function dbClear(store) {
-  return new Promise((resolve, reject) => {
-    const tx  = DB.transaction(store, 'readwrite');
-    const req = tx.objectStore(store).clear();
-    req.onsuccess = () => resolve();
-    req.onerror   = () => reject(req.error);
-  });
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function getServerUrl()  { return (localStorage.getItem('server_url') || '').replace(/\/$/, ''); }
-function getToken()      { return localStorage.getItem('auth_token') || ''; }
-function getUser()       { try { return JSON.parse(localStorage.getItem('user_data') || '{}'); } catch { return {}; } }
-
-function showToast(msg, duration = 3000) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), duration);
-}
-
-function logLine(containerId, msg, type = 'info') {
-  const el = document.getElementById(containerId);
-  if (!el) return;
-  el.style.display = 'block';
-  const div = document.createElement('div');
-  div.className = 'log-line log-' + type;
-  div.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
-  el.appendChild(div);
-  el.scrollTop = el.scrollHeight;
-}
-
-function todayStr() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function localId() {
-  return 'r_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
-}
-
-// ── Online / Offline ──────────────────────────────────────────────────────────
-function updateOnlineStatus() {
-  isOnline = navigator.onLine;
-  const dot = document.getElementById('online-dot');
-  dot.classList.toggle('offline', !isOnline);
-  dot.title = isOnline ? 'Online' : 'Offline';
-}
-window.addEventListener('online',  () => { updateOnlineStatus(); showToast('🌐 Back online! You can now sync.'); });
-window.addEventListener('offline', () => { updateOnlineStatus(); showToast('📵 Offline — readings saved locally.'); });
-
-// ── API Calls ─────────────────────────────────────────────────────────────────
-async function apiCall(action, method = 'GET', body = null) {
-  const url   = getServerUrl() + '/api/sync.php?action=' + action;
-  const opts  = {
-    method,
-    headers: { 'Content-Type': 'application/json', 'X-API-Token': getToken() },
-  };
-  if (body) opts.body = JSON.stringify(body);
-  const res  = await fetch(url, opts);
-  const data = await res.json();
-  if (!data.ok) throw new Error(data.error || 'API error');
-  return data.data;
-}
-
-// ── LOGIN ─────────────────────────────────────────────────────────────────────
-async function doLogin() {
-  const serverUrl = document.getElementById('server-url').value.trim().replace(/\/$/, '');
-  const email     = document.getElementById('login-email').value.trim();
-  const password  = document.getElementById('login-password').value;
-  const errEl     = document.getElementById('login-error');
-  const btn       = document.getElementById('login-btn-text');
-
-  if (!serverUrl || !email || !password) {
-    errEl.textContent = 'Please fill in all fields.';
-    errEl.style.display = 'block';
+  if(!filtered.length){
+    el.innerHTML=`<div class="empty"><div class="empty-icon">🔍</div><div class="empty-title">No customers found</div><div class="empty-sub">Try a different search or filter.</div></div>`;
     return;
   }
 
-  errEl.style.display = 'none';
-  btn.textContent = 'Signing in...';
-  document.getElementById('login-btn').disabled = true;
-
-  try {
-    localStorage.setItem('server_url', serverUrl);
-    document.getElementById('settings-server-url').value = serverUrl;
-
-    const res = await fetch(serverUrl + '/api/sync.php?action=login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
-    const data = await res.json();
-    if (!data.ok) throw new Error(data.error);
-
-    localStorage.setItem('auth_token', data.data.token);
-    localStorage.setItem('user_data',  JSON.stringify(data.data.user));
-
-    showApp();
-    await loadCustomers();
-  } catch (err) {
-    errEl.textContent = err.message.includes('fetch') ? 'Cannot reach server. Check URL and connection.' : err.message;
-    errEl.style.display = 'block';
-  } finally {
-    btn.textContent = 'Sign In';
-    document.getElementById('login-btn').disabled = false;
-  }
-}
-
-function doLogout() {
-  if (!confirm('Log out? Unsynced readings will remain saved locally.')) return;
-  localStorage.removeItem('auth_token');
-  localStorage.removeItem('user_data');
-  showScreen('login-screen');
-}
-
-// ── SCREEN / TAB NAV ─────────────────────────────────────────────────────────
-function showScreen(id) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-}
-
-function showApp() {
-  showScreen('app-screen');
-  const user = getUser();
-  document.getElementById('topbar-user').textContent = user.name || 'Staff';
-  document.getElementById('settings-server-url').value = getServerUrl();
-  renderSessionInfo();
-  switchTab('home');
-}
-
-let activeTab = 'home';
-function switchTab(tab) {
-  activeTab = tab;
-  ['home','queue','sync'].forEach(t => {
-    document.getElementById('panel-' + t).style.display = t === tab ? 'flex' : 'none';
-    document.getElementById('panel-' + t).style.flexDirection = 'column';
-    document.getElementById('tab-' + t)?.classList.toggle('active', t === tab);
-  });
-  // Close reading panel when switching tabs
-  if (tab !== 'home') closeReadingPanel(true);
-  if (tab === 'queue') renderQueue();
-  if (tab === 'sync')  renderSessionInfo();
-}
-
-// ── CUSTOMERS ─────────────────────────────────────────────────────────────────
-async function loadCustomers() {
-  // Try from cache first
-  try {
-    const cached = await dbGetAll(STORE_CACHE);
-    const custCache = cached.find(c => c.key === 'customers');
-    if (custCache) {
-      customers = custCache.value;
-      await loadTodayReadings();
-      renderCustomers();
-    }
-  } catch (e) {}
-
-  // Fetch fresh if online
-  if (isOnline) {
-    try {
-      const data = await apiCall('customers');
-      customers  = data.customers || [];
-      await dbPut(STORE_CACHE, { key: 'customers', value: customers, ts: Date.now() });
-      await loadTodayReadings();
-      renderCustomers();
-      showToast('✅ ' + customers.length + ' customers loaded');
-    } catch (err) {
-      if (!customers.length) {
-        document.getElementById('customer-list').innerHTML =
-          '<div class="empty"><div class="empty-icon">⚠️</div><p>Cannot load customers.<br>' + err.message + '</p></div>';
-      }
-    }
-  }
-}
-
-async function refreshCustomers() {
-  showToast('⟳ Refreshing...');
-  await loadCustomers();
-}
-
-async function loadTodayReadings() {
-  // Build map of customer_id → reading if recorded today
-  todayReadings = {};
-  try {
-    const all = await dbGetAll(STORE_QUEUE);
-    const today = todayStr();
-    all.forEach(r => {
-      if (r.reading_date === today) todayReadings[r.customer_id] = r;
-    });
-  } catch (e) {}
-}
-
-function renderCustomers() {
-  const q      = document.getElementById('customer-search').value.toLowerCase();
-  const list   = document.getElementById('customer-list');
-  const total  = customers.length;
-
-  let filtered = customers.filter(c => {
-    const matchSearch = !q || c.name.toLowerCase().includes(q) || c.meter_no.toLowerCase().includes(q) || c.id.toLowerCase().includes(q);
-    const hasDoneToday = !!todayReadings[c.id];
-    if (activeFilter === 'done'    && !hasDoneToday) return false;
-    if (activeFilter === 'pending' && hasDoneToday)  return false;
-    return matchSearch;
-  });
-
-  const doneCount  = customers.filter(c => !!todayReadings[c.id]).length;
-  const queueCount = queue.filter(r => !r.synced).length;
-
-  document.getElementById('stat-total').textContent = total;
-  document.getElementById('stat-done').textContent  = doneCount;
-  document.getElementById('stat-queue').textContent = queueCount;
-  document.getElementById('queue-badge').textContent = queueCount;
-  document.getElementById('queue-badge').style.display = queueCount > 0 ? '' : 'none';
-
-  const pct = total > 0 ? Math.round(doneCount / total * 100) : 0;
-  document.getElementById('progress-section').style.display = total > 0 ? '' : 'none';
-  document.getElementById('progress-fill').style.width = pct + '%';
-  document.getElementById('progress-text').textContent = pct + '%';
-
-  if (!filtered.length) {
-    list.innerHTML = '<div class="empty"><div class="empty-icon">🔍</div><p>No customers found.</p></div>';
-    return;
-  }
-
-  list.innerHTML = filtered.map(c => {
-    const done    = !!todayReadings[c.id];
-    const queued  = queue.some(r => r.customer_id === c.id && !r.synced);
-    const prevVal = parseFloat(c.last_reading || 0).toFixed(0);
-    const cls     = done ? 'has-reading' : (queued ? 'pending-sync' : '');
-    const indicator = done ? '✅' : (queued ? '⏳' : '');
-
-    return `
-    <div class="customer-item ${cls}" onclick="openReading(${JSON.stringify(c).replace(/"/g,'&quot;')})">
-      <div class="cust-avatar">${c.name[0].toUpperCase()}</div>
+  // Build HTML — each item calls openReading with the customer id
+  el.innerHTML=filtered.map(c=>{
+    const done=!!todayMap[c.id];
+    const pend=queue.some(r=>r.cid===c.id&&!r.synced);
+    const cls=done?'done':(pend?'pend':'');
+    const ind=done?'✅':(pend?'⏳':'');
+    const prev=parseFloat(c.last_reading||0).toFixed(0);
+    const cid=esc(c.id);
+    return `<div class="cust-item ${cls}" data-cid="${cid}" onclick="openReadingById('${cid}')">
+      <div class="cust-av">${esc((c.name||'?')[0]).toUpperCase()}</div>
       <div class="cust-info">
-        <div class="cust-name">${escHtml(c.name)}</div>
-        <div class="cust-meta">${escHtml(c.meter_no)} · ${escHtml(c.id)}</div>
-        <div class="cust-meta" style="color:var(--gray)">${escHtml(c.address || '')}</div>
+        <div class="cust-name">${esc(c.name)}</div>
+        <div class="cust-meta">📟 ${esc(c.meter_no)} · ${cid}</div>
+        <div class="cust-meta">${esc(c.address||'')}</div>
       </div>
-      <div class="cust-reading">
-        ${indicator ? `<div style="font-size:18px">${indicator}</div>` : ''}
-        <div class="reading-val">${prevVal}</div>
-        <div class="reading-lbl">Last m³</div>
+      <div class="cust-right">
+        ${ind?`<div style="font-size:19px;margin-bottom:2px">${ind}</div>`:''}
+        <div class="cust-rdg">${prev}</div>
+        <div class="cust-rdg-lbl">Last m³</div>
       </div>
     </div>`;
   }).join('');
 }
 
-function filterCustomers() { renderCustomers(); }
-
-function setFilter(f, btn) {
-  activeFilter = f;
-  document.querySelectorAll('.tab.active, [onclick^="setFilter"]').forEach(b => {
-    if (b.getAttribute('onclick')?.startsWith('setFilter')) {
-      b.classList.remove('btn-primary');
-      b.classList.add('btn-outline');
-    }
-  });
-  btn.classList.remove('btn-outline');
-  btn.classList.add('btn-primary');
-  renderCustomers();
+// Called from onclick — looks up customer by id string
+function openReadingById(cid){
+  const c=customers.find(x=>x.id===cid);
+  if(!c){toast('Customer not found');return}
+  openReading(c);
 }
 
-function escHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function openReading(c){
+  curCust=c;photoB64=null;
+  document.getElementById('rf-name').textContent=c.name;
+  document.getElementById('rf-id').textContent=c.id;
+  document.getElementById('rf-meter').textContent='📟 '+(c.meter_no||'—');
+  document.getElementById('rf-status').textContent=c.status||'Active';
+  document.getElementById('rf-addr').textContent=c.address||'';
+  document.getElementById('rf-prev').textContent=parseFloat(c.last_reading||0).toFixed(2);
+  document.getElementById('rf-curr').value='';
+  document.getElementById('rf-date').value=today();
+  document.getElementById('rf-notes').value='';
+  document.getElementById('photo-prev').style.display='none';
+  document.getElementById('photo-prev').src='';
+  document.getElementById('rf-photo').value='';
+  document.getElementById('photo-lbl').textContent='📷 Add Meter Photo (optional)';
+  document.getElementById('cons-box').style.display='none';
+  document.getElementById('em-meter').value=c.meter_no||'';
+  document.getElementById('em-name').value=c.name||'';
+  document.getElementById('em-addr').value=c.address||'';
+  // Collapse edit section
+  document.getElementById('edit-body').classList.remove('open');
+  document.getElementById('edit-arrow').textContent='＋';
+  // Switch to reading page
+  document.getElementById('pg-customers').classList.remove('active');
+  document.getElementById('pg-reading').classList.add('active');
+  document.getElementById('pg-reading').scrollTop=0;
+  setTimeout(()=>document.getElementById('rf-curr').focus(),150);
 }
 
-// ── READING FORM ──────────────────────────────────────────────────────────────
-function openReading(customer) {
-  currentCustomer = customer;
-  photoDataUrl    = null;
-
-  document.getElementById('rf-name').textContent    = customer.name;
-  document.getElementById('rf-id').textContent      = customer.id;
-  document.getElementById('rf-meter').textContent   = 'Meter: ' + customer.meter_no;
-  document.getElementById('rf-address').textContent = customer.address || '';
-  document.getElementById('rf-prev').textContent    = parseFloat(customer.last_reading || 0).toFixed(2);
-  document.getElementById('rf-current').value       = '';
-  document.getElementById('rf-date').value          = todayStr();
-  document.getElementById('rf-notes').value         = '';
-  document.getElementById('photo-preview').style.display = 'none';
-  document.getElementById('photo-preview').src      = '';
-  document.getElementById('rf-photo').value         = '';
-  document.getElementById('consumption-preview').style.display = 'none';
-
-  // Hide home list, show reading form
-  document.getElementById('customer-list').style.display   = 'none';
-  document.getElementById('panel-reading').style.display   = 'flex';
-  document.getElementById('panel-home').style.overflow     = 'hidden';
-  document.getElementById('panel-home').querySelector('.search-wrap').style.display = 'none';
-  document.getElementById('panel-home').querySelector('[onclick^="setFilter"]')?.parentElement?.forEach?.(() => {});
-
-  // Scroll to top
-  document.getElementById('panel-reading').scrollTop = 0;
-
-  // Focus current reading input
-  setTimeout(() => document.getElementById('rf-current').focus(), 300);
+function closeReading(){
+  document.getElementById('pg-reading').classList.remove('active');
+  document.getElementById('pg-customers').classList.add('active');
+  // Update tab state
+  ['customers','queue','settings'].forEach(t=>document.getElementById('tab-'+t)?.classList.toggle('active',t==='customers'));
+  activeTab='customers';
+  curCust=null;
 }
 
-function closeReadingPanel(silent = false) {
-  document.getElementById('panel-reading').style.display  = 'none';
-  document.getElementById('customer-list').style.display  = '';
-  const searchWrap = document.getElementById('panel-home').querySelector('.search-wrap');
-  if (searchWrap) searchWrap.style.display = '';
-  currentCustomer = null;
-  if (!silent) renderCustomers();
+// ── EDIT METER ───────────────────────────────────────────────────────────────
+function toggleEdit(){
+  const body=document.getElementById('edit-body');
+  const arrow=document.getElementById('edit-arrow');
+  const isOpen=body.classList.contains('open');
+  body.classList.toggle('open',!isOpen);
+  arrow.textContent=isOpen?'＋':'－';
 }
 
-function updateConsumptionPreview() {
-  const prev    = parseFloat(document.getElementById('rf-prev').textContent) || 0;
-  const curr    = parseFloat(document.getElementById('rf-current').value) || 0;
-  const preview = document.getElementById('consumption-preview');
-
-  if (!curr) { preview.style.display = 'none'; return; }
-  const consumption = curr - prev;
-  preview.style.display = '';
-  document.getElementById('consumption-val').textContent = consumption.toFixed(2);
-
-  preview.className = 'consumption-preview';
-  if (consumption < 0)   preview.classList.add('error');
-  else if (consumption > 50) preview.classList.add('warning');
-}
-
-function handlePhoto(input) {
-  const file = input.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    photoDataUrl = e.target.result;
-    const img = document.getElementById('photo-preview');
-    img.src = photoDataUrl;
-    img.style.display = 'block';
-  };
-  reader.readAsDataURL(file);
-}
-
-async function saveReading() {
-  if (!currentCustomer) return;
-
-  const prev    = parseFloat(document.getElementById('rf-prev').textContent) || 0;
-  const curr    = parseFloat(document.getElementById('rf-current').value);
-  const date    = document.getElementById('rf-date').value;
-  const notes   = document.getElementById('rf-notes').value.trim();
-
-  if (isNaN(curr) || curr === '') { showToast('⚠️ Please enter a reading value.'); return; }
-  if (!date) { showToast('⚠️ Please select a date.'); return; }
-  if (curr < prev) {
-    if (!confirm(`Current reading (${curr}) is less than previous (${prev}). Continue anyway?`)) return;
+async function saveEditMeter(){
+  if(!curCust)return;
+  const meter=document.getElementById('em-meter').value.trim();
+  const name =document.getElementById('em-name').value.trim();
+  const addr =document.getElementById('em-addr').value.trim();
+  if(!meter&&!name){toast('⚠️ Enter meter number or name.');return}
+  // Save to edits store
+  await put(SE,{cid:curCust.id,meter_no:meter,name,address:addr,ts:Date.now()});
+  // Update in-memory
+  const idx=customers.findIndex(c=>c.id===curCust.id);
+  if(idx>=0){
+    if(meter)customers[idx].meter_no=meter;
+    if(name) customers[idx].name=name;
+    if(addr) customers[idx].address=addr;
+    await put(SC,{k:'cust',v:customers,ts:Date.now()});
+    curCust=customers[idx];
   }
+  document.getElementById('rf-name').textContent=curCust.name;
+  document.getElementById('rf-meter').textContent='📟 '+(curCust.meter_no||'—');
+  document.getElementById('rf-addr').textContent=curCust.address||'';
+  toggleEdit();
+  toast('✅ Meter details saved locally!');
+}
 
-  const consumption = parseFloat((curr - prev).toFixed(2));
-  const entry = {
-    local_id     : localId(),
-    customer_id  : currentCustomer.id,
-    customer_name: currentCustomer.name,
-    meter_no     : currentCustomer.meter_no,
-    reading_date : date,
-    previous_reading: prev,
-    current_reading : curr,
-    consumption     : consumption,
-    notes           : notes,
-    photo           : photoDataUrl,   // stored locally only, not synced
-    synced          : false,
-    created_at      : new Date().toISOString(),
+// ── READING FORM ─────────────────────────────────────────────────────────────
+function updatePreview(){
+  const prev=parseFloat(document.getElementById('rf-prev').textContent)||0;
+  const curr=parseFloat(document.getElementById('rf-curr').value);
+  const box=document.getElementById('cons-box');
+  const val=document.getElementById('cons-val');
+  if(!document.getElementById('rf-curr').value){box.style.display='none';return}
+  const c=curr-prev;val.textContent=c.toFixed(2);box.style.display='';
+  box.className='cons-box '+(c<0?'cons-err':c>60?'cons-warn':'cons-ok');
+}
+
+function handlePhoto(inp){
+  const f=inp.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    photoB64=e.target.result;
+    const img=document.getElementById('photo-prev');
+    img.src=photoB64;img.style.display='block';
+    document.getElementById('photo-lbl').textContent='📷 Change Photo';
   };
+  r.readAsDataURL(f);
+}
 
-  try {
-    await dbPut(STORE_QUEUE, entry);
+async function saveReading(){
+  if(!curCust){toast('No customer selected.');return}
+  const prev=parseFloat(document.getElementById('rf-prev').textContent)||0;
+  const curr=parseFloat(document.getElementById('rf-curr').value);
+  const date=document.getElementById('rf-date').value;
+  const notes=document.getElementById('rf-notes').value.trim();
+  if(isNaN(curr)||document.getElementById('rf-curr').value===''){toast('⚠️ Enter a reading value.');return}
+  if(!date){toast('⚠️ Select a date.');return}
+  if(curr<prev&&!confirm(`Current (${curr}) < previous (${prev}). Save anyway?`))return;
+  const entry={
+    lid:lid(),cid:curCust.id,cname:curCust.name,meter_no:curCust.meter_no,
+    rdate:date,prev_reading:prev,curr_reading:curr,
+    consumption:parseFloat((curr-prev).toFixed(2)),
+    // field names the API expects:
+    customer_id:curCust.id,reading_date:date,
+    previous_reading:prev,current_reading:curr,
+    notes,photo:photoB64,synced:false,ts:Date.now()
+  };
+  try{
+    await put(SQ,entry);
     queue.push(entry);
-    todayReadings[currentCustomer.id] = entry;
-
-    // Update customer's last_reading in cached list
-    const idx = customers.findIndex(c => c.id === currentCustomer.id);
-    if (idx !== -1) {
-      customers[idx].last_reading = curr;
-      customers[idx].last_reading_date = date;
-      await dbPut(STORE_CACHE, { key: 'customers', value: customers, ts: Date.now() });
-    }
-
-    showToast('✅ Reading saved! ' + (isOnline ? 'Will sync shortly.' : 'Saved offline.'));
-    closeReadingPanel();
-
-    // Auto-sync if online
-    if (isOnline) {
-      setTimeout(syncNow, 1000);
-    }
-  } catch (err) {
-    showToast('❌ Failed to save: ' + err.message);
-  }
+    todayMap[curCust.id]=entry;
+    const idx=customers.findIndex(c=>c.id===curCust.id);
+    if(idx>=0){customers[idx].last_reading=curr;customers[idx].last_reading_date=date;
+      await put(SC,{k:'cust',v:customers,ts:Date.now()})}
+    updateBadge();
+    toast('✅ Reading saved!'+(isOnline?' Syncing…':' (offline — will sync later)'));
+    closeReading();
+    if(isOnline)setTimeout(syncNow,800);
+  }catch(e){toast('❌ Save failed: '+e.message)}
 }
 
-// ── QUEUE ─────────────────────────────────────────────────────────────────────
-async function loadQueue() {
-  try {
-    queue = await dbGetAll(STORE_QUEUE);
-  } catch (e) {
-    queue = [];
-  }
-}
-
-function renderQueue() {
-  const pending = queue.filter(r => !r.synced);
-  const synced  = queue.filter(r => r.synced);
-  const el      = document.getElementById('queue-list');
-  const sumEl   = document.getElementById('queue-summary-text');
-  const syncBtn = document.getElementById('sync-btn');
-
-  sumEl.textContent = `${pending.length} pending · ${synced.length} already synced`;
-  syncBtn.disabled  = pending.length === 0 || syncing;
-
-  if (!queue.length) {
-    el.innerHTML = '<div class="empty"><div class="empty-icon">📋</div><p>No readings in queue yet.</p></div>';
+// ── QUEUE ────────────────────────────────────────────────────────────────────
+function renderQueue(){
+  const pend=queue.filter(r=>!r.synced);
+  const sync=queue.filter(r=>r.synced);
+  const el=document.getElementById('queue-list');
+  const sm=document.getElementById('q-summary');
+  const sb=document.getElementById('sync-btn');
+  if(sm)sm.textContent=`${pend.length} pending · ${sync.length} synced`;
+  if(sb){sb.disabled=pend.length===0||syncing;sb.textContent='☁️ Sync to Server'}
+  if(!queue.length){
+    el.innerHTML=`<div class="empty"><div class="empty-icon">📋</div><div class="empty-title">Queue is empty</div></div>`;
     return;
   }
-
-  el.innerHTML = [...pending, ...synced].map(r => `
-    <div class="queue-item ${r.synced ? 'synced' : ''}">
-      <div class="qi-header">
+  el.innerHTML=[...pend,...sync].map(r=>`
+    <div class="qi ${r.synced?'synced':''}">
+      <div class="qi-top">
         <div>
-          <div class="qi-name">${escHtml(r.customer_name)}</div>
-          <div style="font-size:11px;color:var(--gray)">${escHtml(r.meter_no)} · ${escHtml(r.reading_date)}</div>
+          <div class="qi-name">${esc(r.cname||r.customer_name||'?')}</div>
+          <div style="font-size:11px;color:var(--gray)">${esc(r.meter_no||'')} · ${esc(r.rdate||r.reading_date||'')}</div>
         </div>
-        ${!r.synced ? `<button class="qi-delete" onclick="deleteQueueItem('${r.local_id}')" title="Remove">×</button>` : '<span style="color:var(--green);font-size:12px;font-weight:700">✅ Synced</span>'}
+        <div style="display:flex;align-items:center;gap:5px">
+          <span class="qi-status ${r.synced?'qi-done':'qi-pend'}">${r.synced?'✅ Synced':'⏳ Pending'}</span>
+          ${!r.synced?`<button class="qi-del" onclick="delQueue('${r.lid}')" type="button">×</button>`:''}
+        </div>
       </div>
-      <div class="qi-details">
-        <span>Prev: <strong>${r.previous_reading}</strong></span>
-        <span>Curr: <strong class="qi-reading">${r.current_reading}</strong></span>
-        <span>Usage: <strong>${r.consumption} m³</strong></span>
-        ${r.notes ? `<span>📝 ${escHtml(r.notes)}</span>` : ''}
+      <div class="qi-meta">
+        <span>Prev: <b>${r.prev_reading??r.previous_reading??0}</b></span>
+        <span>Curr: <b class="qi-rdg">${r.curr_reading??r.current_reading??0}</b></span>
+        <span>Usage: <b>${r.consumption??0} m³</b></span>
+        ${r.notes?`<span>📝 ${esc(r.notes)}</span>`:''}
       </div>
-    </div>
-  `).join('');
+    </div>`).join('');
 }
 
-async function deleteQueueItem(localId) {
-  if (!confirm('Remove this reading from the queue?')) return;
-  try {
-    await dbDelete(STORE_QUEUE, localId);
-    queue = queue.filter(r => r.local_id !== localId);
-    delete todayReadings[queue.find?.(r => r.local_id === localId)?.customer_id];
-    renderQueue();
-    renderCustomers();
-    showToast('Reading removed from queue.');
-  } catch (e) { showToast('Error removing reading.'); }
+async function delQueue(l){
+  if(!confirm('Remove this reading?'))return;
+  await del(SQ,l);
+  queue=queue.filter(r=>r.lid!==l);
+  await buildTodayMap();
+  renderQueue();renderList();
+  toast('Removed.');
 }
 
-// ── SYNC ──────────────────────────────────────────────────────────────────────
-async function syncNow() {
-  if (syncing) { showToast('Sync already in progress...'); return; }
-  if (!isOnline) { showToast('📵 No internet connection.'); return; }
+function toggleLog(){
+  const el=document.getElementById('sync-log');
+  el.style.display=el.style.display==='none'?'block':'none';
+}
 
-  const pending = queue.filter(r => !r.synced);
-  if (!pending.length) { showToast('✅ Nothing to sync!'); return; }
-
-  syncing = true;
-  const syncBtn   = document.getElementById('sync-btn');
-  if (syncBtn) { syncBtn.textContent = '⟳ Syncing...'; syncBtn.disabled = true; }
-
-  const logId = activeTab === 'queue' ? 'sync-log' : 'settings-log';
-  logLine(logId, `Starting sync of ${pending.length} reading(s)...`, 'info');
-
-  try {
-    const result = await apiCall('sync_readings', 'POST', { readings: pending });
-    logLine(logId, `✅ ${result.imported} imported, ${result.skipped} skipped`, 'ok');
-
-    if (result.errors?.length) {
-      result.errors.forEach(e => logLine(logId, `⚠️ ${e.local_id}: ${e.error}`, 'err'));
-    }
-
-    // Mark all as synced in DB
-    for (const r of pending) {
-      r.synced = true;
-      await dbPut(STORE_QUEUE, r);
-    }
-    queue = await dbGetAll(STORE_QUEUE);
-
-    logLine(logId, `Sync complete by ${result.synced_by} at ${result.synced_at}`, 'info');
-    showToast(`☁️ Synced ${result.imported} reading(s)!`);
-    renderQueue();
-    renderCustomers();
-  } catch (err) {
-    logLine(logId, '❌ Sync failed: ' + err.message, 'err');
-    showToast('❌ Sync failed: ' + err.message);
-  } finally {
-    syncing = false;
-    if (syncBtn) { syncBtn.textContent = '☁️ Sync to Server'; syncBtn.disabled = false; }
+// ── SYNC ─────────────────────────────────────────────────────────────────────
+async function syncNow(){
+  if(syncing){toast('Sync in progress…');return}
+  if(!isOnline){toast('📵 No internet');return}
+  const pend=queue.filter(r=>!r.synced);
+  if(!pend.length){toast('✅ Nothing to sync');return}
+  syncing=true;
+  const sb=document.getElementById('sync-btn');
+  if(sb){sb.textContent='⟳ Syncing…';sb.disabled=true}
+  const logId=activeTab==='queue'?'sync-log':'st-log';
+  log(logId,`Syncing ${pend.length} reading(s)…`,'info');
+  try{
+    const result=await api('sync_readings','POST',{readings:pend});
+    log(logId,`✅ Imported: ${result.imported}, Skipped: ${result.skipped}`,'ok');
+    if(result.errors?.length)result.errors.forEach(e=>log(logId,'⚠️ '+e.error,'err'));
+    for(const r of pend){r.synced=true;await put(SQ,r)}
+    queue=await getAll(SQ);
+    await buildTodayMap();
+    if(activeTab==='queue')renderQueue();
+    renderList();
+    toast(`☁️ Synced ${result.imported} reading(s)!`);
+  }catch(e){
+    log(logId,'❌ '+e.message,'err');
+    toast('❌ Sync failed: '+e.message);
+  }finally{
+    syncing=false;
+    if(sb){sb.textContent='☁️ Sync to Server';sb.disabled=false}
   }
 }
 
 // ── SETTINGS ─────────────────────────────────────────────────────────────────
-function saveSettings() {
-  const url = document.getElementById('settings-server-url').value.trim().replace(/\/$/, '');
-  localStorage.setItem('server_url', url);
-  showToast('✅ Settings saved!');
-  logLine('settings-log', 'Server URL saved: ' + url, 'ok');
+function saveSettings(){
+  const u=document.getElementById('st-url').value.trim().replace(/\/$/,'');
+  localStorage.setItem('srv_url',u);
+  document.getElementById('l-url').value=u;
+  toast('✅ Saved!');log('st-log','Saved: '+u,'ok');
 }
 
-async function testConnection() {
-  const url = document.getElementById('settings-server-url').value.trim().replace(/\/$/, '');
-  if (!url) { showToast('Enter a server URL first.'); return; }
-  logLine('settings-log', 'Testing connection to ' + url + '...', 'info');
-  try {
-    const res  = await fetch(url + '/api/sync.php?action=ping', { signal: AbortSignal.timeout(5000) });
-    const data = await res.json();
-    if (data.ok) {
-      logLine('settings-log', '✅ Connected! ' + (data.data?.message || ''), 'ok');
-      showToast('✅ Server reachable!');
-    } else {
-      logLine('settings-log', '⚠️ Server responded but error: ' + data.error, 'err');
+async function testConn(){
+  const u=document.getElementById('st-url').value.trim().replace(/\/$/,'');
+  if(!u){toast('Enter server URL first.');return}
+  log('st-log','Testing '+u+'…','info');
+  try{
+    const r=await fetch(u+'/api/sync.php?action=ping',{signal:AbortSignal.timeout(6000)});
+    const d=await r.json();
+    if(d.ok){log('st-log','✅ Connected: '+(d.data?.message||'OK'),'ok');toast('✅ Connected!')}
+    else log('st-log','⚠️ '+d.error,'err');
+  }catch(e){log('st-log','❌ '+e.message,'err');toast('❌ Cannot reach server')}
+}
+
+function refreshSessionInfo(){
+  const u=getUser();
+  const el=document.getElementById('sess-info');if(!el)return;
+  const pn=queue.filter(r=>!r.synced).length;
+  el.innerHTML=[
+    ['User',      u.name||'—'],
+    ['Role',      u.role||'—'],
+    ['Server',    getUrl()||'Not set'],
+    ['Customers', customers.length],
+    ['Queue',     queue.length+' total'],
+    ['Pending',   `<b style="color:var(--orange)">${pn}</b>`],
+    ['Network',   isOnline?'<b style="color:var(--green)">🌐 Online</b>':'<b style="color:var(--red)">📵 Offline</b>'],
+  ].map(([k,v])=>`<div class="si-row"><span style="color:var(--gray)">${k}</span><span>${v}</span></div>`).join('');
+}
+
+async function clearSynced(){
+  if(!confirm('Clear synced records?'))return;
+  const keep=queue.filter(r=>!r.synced);
+  await clear(SQ);
+  for(const r of keep)await put(SQ,r);
+  queue=keep;await buildTodayMap();
+  renderQueue();renderList();toast('🧹 Done.');
+}
+
+async function hardReset(){
+  if(!confirm('Delete ALL local data including unsynced readings?'))return;
+  if(!confirm('This CANNOT be undone. Confirm?'))return;
+  await clear(SQ);await clear(SC);await clear(SE);
+  localStorage.clear();toast('Cleared. Reloading…');
+  setTimeout(()=>location.reload(),1500);
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+async function init(){
+  DB=await openDB();
+  updateNet();
+  const saved=localStorage.getItem('srv_url')||'';
+  if(saved){document.getElementById('l-url').value=saved;document.getElementById('st-url').value=saved;}
+  if(getToken()){
+    startApp();
+    await loadCustomers(false);
+    await buildTodayMap();
+    renderList();
+    if(isOnline){
+      loadCustomers(true);
+      if(queue.filter(r=>!r.synced).length>0)setTimeout(syncNow,2000);
     }
-  } catch (err) {
-    logLine('settings-log', '❌ Cannot reach server: ' + err.message, 'err');
-    showToast('❌ Cannot reach server.');
   }
-}
-
-function renderSessionInfo() {
-  const user = getUser();
-  const el   = document.getElementById('session-info');
-  const cachedTs = (() => {
-    try { return JSON.parse(localStorage.getItem('cache_ts') || '0'); } catch { return 0; }
-  })();
-
-  el.innerHTML = `
-    <div style="display:flex;justify-content:space-between"><span style="color:var(--gray)">Logged in as</span><strong>${escHtml(user.name || '—')}</strong></div>
-    <div style="display:flex;justify-content:space-between"><span style="color:var(--gray)">Role</span><strong>${escHtml(user.role || '—')}</strong></div>
-    <div style="display:flex;justify-content:space-between"><span style="color:var(--gray)">Server</span><strong style="font-size:12px">${escHtml(getServerUrl() || 'Not set')}</strong></div>
-    <div style="display:flex;justify-content:space-between"><span style="color:var(--gray)">Customers cached</span><strong>${customers.length}</strong></div>
-    <div style="display:flex;justify-content:space-between"><span style="color:var(--gray)">Queue total</span><strong>${queue.length}</strong></div>
-    <div style="display:flex;justify-content:space-between"><span style="color:var(--gray)">Pending sync</span><strong style="color:var(--orange)">${queue.filter(r=>!r.synced).length}</strong></div>
-    <div style="display:flex;justify-content:space-between"><span style="color:var(--gray)">Connection</span><strong style="color:${isOnline?'var(--green)':'var(--red)'}">${isOnline?'🌐 Online':'📵 Offline'}</strong></div>
-  `;
-}
-
-async function clearSyncedReadings() {
-  if (!confirm('Clear all synced readings from local storage? Unsynced readings will be kept.')) return;
-  const unsynced = queue.filter(r => !r.synced);
-  try {
-    await dbClear(STORE_QUEUE);
-    for (const r of unsynced) await dbPut(STORE_QUEUE, r);
-    queue = unsynced;
-    renderQueue();
-    renderCustomers();
-    showToast('🧹 Synced records cleared.');
-  } catch (e) { showToast('Error clearing records.'); }
-}
-
-async function hardReset() {
-  if (!confirm('⚠️ This will delete ALL local data including unsynced readings. Are you sure?')) return;
-  if (!confirm('This CANNOT be undone. Confirm reset?')) return;
-  try {
-    await dbClear(STORE_QUEUE);
-    await dbClear(STORE_CACHE);
-    localStorage.clear();
-    showToast('All data cleared. Reloading...');
-    setTimeout(() => location.reload(), 1500);
-  } catch (e) { showToast('Error during reset.'); }
-}
-
-// ── INIT ──────────────────────────────────────────────────────────────────────
-async function init() {
-  DB = await openDB();
-  updateOnlineStatus();
-  await loadQueue();
-
-  if (getToken()) {
-    showApp();
-    await loadCustomers();
-    // Auto-sync if online and pending
-    if (isOnline && queue.filter(r => !r.synced).length > 0) {
-      setTimeout(syncNow, 2000);
-    }
-  } else {
-    // Pre-fill server URL if saved
-    const savedUrl = localStorage.getItem('server_url');
-    if (savedUrl) document.getElementById('server-url').value = savedUrl;
-  }
-
-  // Login on Enter key
-  document.getElementById('login-password').addEventListener('keydown', e => {
-    if (e.key === 'Enter') doLogin();
-  });
 }
 
 init();
+</script>
 
-// ── Service Worker Registration (for PWA install) ─────────────────────────────
-if ('serviceWorker' in navigator) {
-  // Inline SW as blob for self-contained file
-  const swCode = `
-    const CACHE = 'aquabill-field-v1';
-    self.addEventListener('install', e => {
-      e.waitUntil(caches.open(CACHE).then(c => c.addAll(['/'])));
-      self.skipWaiting();
-    });
-    self.addEventListener('activate', e => {
-      e.waitUntil(caches.keys().then(keys =>
-        Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-      ));
-      self.clients.claim();
-    });
-    self.addEventListener('fetch', e => {
-      if (e.request.url.includes('/api/')) return; // Never cache API
-      e.respondWith(
-        caches.match(e.request).then(cached => cached || fetch(e.request).catch(() => cached))
-      );
-    });
-  `;
-  const blob  = new Blob([swCode], { type: 'application/javascript' });
-  const swUrl = URL.createObjectURL(blob);
-  navigator.serviceWorker.register(swUrl).catch(() => {});
+<!-- SERVICE WORKER (PWA) -->
+<script>
+if('serviceWorker'in navigator){
+  const c=`
+    const V='aqf-v3';
+    self.addEventListener('install',e=>{self.skipWaiting()});
+    self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==V).map(k=>caches.delete(k)))));self.clients.claim()});
+    self.addEventListener('fetch',e=>{
+      if(e.request.url.includes('/api/'))return;
+      e.respondWith(caches.open(V).then(c=>c.match(e.request).then(r=>{
+        const f=fetch(e.request).then(nr=>{c.put(e.request,nr.clone());return nr}).catch(()=>r);
+        return r||f;
+      })));
+    });`;
+  const b=new Blob([c],{type:'application/javascript'});
+  navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});
 }
 </script>
 </body>

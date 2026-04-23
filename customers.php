@@ -15,25 +15,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $contact = post('contact');
         $meter   = post('meter_no');
         $status  = post('status');
+        $tierId  = post('rate_tier_id') ?: null;
         $id      = post('id');
 
         if (!$name || !$address || !$contact || !$meter) {
             setFlash('Please fill in all required fields.', 'error');
         } elseif ($action === 'add') {
-            // Generate next ID
             $count = (int)$pdo->query("SELECT COUNT(*) FROM customers")->fetchColumn() + 1;
             $newId = 'C' . str_pad($count, 3, '0', STR_PAD_LEFT);
-            // Ensure unique
-            while ($pdo->prepare("SELECT id FROM customers WHERE id=?")->execute([$newId]) && $pdo->query("SELECT COUNT(*) FROM customers WHERE id='$newId'")->fetchColumn() > 0) {
-                $count++;
-                $newId = 'C' . str_pad($count, 3, '0', STR_PAD_LEFT);
+            while ($pdo->query("SELECT COUNT(*) FROM customers WHERE id='$newId'")->fetchColumn() > 0) {
+                $count++; $newId = 'C' . str_pad($count, 3, '0', STR_PAD_LEFT);
             }
-            $stmt = $pdo->prepare("INSERT INTO customers (id,name,address,contact,meter_no,status,created_at) VALUES (?,?,?,?,?,?,?)");
-            $stmt->execute([$newId, $name, $address, $contact, $meter, $status, date('Y-m-d')]);
+            $stmt = $pdo->prepare("INSERT INTO customers (id,name,address,contact,meter_no,status,rate_tier_id,created_at) VALUES (?,?,?,?,?,?,?,?)");
+            $stmt->execute([$newId, $name, $address, $contact, $meter, $status, $tierId, date('Y-m-d')]);
             setFlash("Customer added successfully! Account: $newId");
         } else {
-            $stmt = $pdo->prepare("UPDATE customers SET name=?,address=?,contact=?,meter_no=?,status=? WHERE id=?");
-            $stmt->execute([$name, $address, $contact, $meter, $status, $id]);
+            $stmt = $pdo->prepare("UPDATE customers SET name=?,address=?,contact=?,meter_no=?,status=?,rate_tier_id=? WHERE id=?");
+            $stmt->execute([$name, $address, $contact, $meter, $status, $tierId, $id]);
             setFlash('Customer updated successfully!');
         }
     } elseif ($action === 'delete' && isAdmin()) {
@@ -76,6 +74,12 @@ if (get('edit')) {
     $editCustomer = $s->fetch();
 }
 
+// Billing rate tiers
+$billingRates = [];
+try {
+    $billingRates = $pdo->query("SELECT * FROM billing_rates WHERE is_active=1 ORDER BY min_cubic")->fetchAll();
+} catch (Exception $e) {}
+
 require_once 'includes/header.php';
 renderHeader('Customers', 'customers');
 ?>
@@ -98,7 +102,7 @@ renderHeader('Customers', 'customers');
   <div class="table-wrap">
     <table>
       <thead>
-        <tr><th>Acct #</th><th>Name</th><th>Address</th><th>Contact</th><th>Meter #</th><th>Status</th><th>Since</th><th>Actions</th></tr>
+        <tr><th>Acct #</th><th>Name</th><th>Address</th><th>Contact</th><th>Meter #</th><th>Rate Tier</th><th>Status</th><th>Actions</th></tr>
       </thead>
       <tbody>
         <?php foreach ($customers as $c): ?>
@@ -108,8 +112,16 @@ renderHeader('Customers', 'customers');
           <td class="fs-sm text-muted" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><?= h($c['address']) ?></td>
           <td class="fs-sm"><?= h($c['contact']) ?></td>
           <td><code><?= h($c['meter_no']) ?></code></td>
+          <td>
+            <?php
+            $tierLabel = '—';
+            foreach ($billingRates as $bt) {
+                if ($bt['id'] == ($c['rate_tier_id'] ?? 0)) { $tierLabel = $bt['label']; break; }
+            }
+            echo '<span class="fs-xs" style="color:var(--info)">' . h($tierLabel) . '</span>';
+            ?>
+          </td>
           <td><span class="badge badge-<?= strtolower(h($c['status'])) ?>"><?= h($c['status']) ?></span></td>
-          <td class="fs-xs text-muted"><?= h($c['created_at']) ?></td>
           <td>
             <div style="display:flex;gap:6px">
               <a href="customer_detail.php?id=<?= h($c['id']) ?>" class="btn btn-sm btn-outline">View</a>
@@ -164,6 +176,18 @@ renderHeader('Customers', 'customers');
           <select name="status" class="form-control"><option>Active</option><option>Disconnected</option></select>
         </div>
       </div>
+      <div class="form-group">
+        <label class="form-label">Billing Rate Tier</label>
+        <select name="rate_tier_id" class="form-control">
+          <option value="">— Select tier (optional) —</option>
+          <?php foreach ($billingRates as $bt): ?>
+          <option value="<?= h($bt['id']) ?>">
+            <?= h($bt['label']) ?> — ₱<?= h($bt['base_charge']) ?> base + ₱<?= h($bt['rate_per_cubic']) ?>/m³
+          </option>
+          <?php endforeach; ?>
+        </select>
+        <div class="form-hint">Determines how the water bill is calculated for this customer.</div>
+      </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-outline" onclick="document.getElementById('add-modal').style.display='none'">Cancel</button>
         <button type="submit" class="btn btn-primary">Save Customer</button>
@@ -196,6 +220,18 @@ renderHeader('Customers', 'customers');
             <option <?= $editCustomer['status']==='Disconnected'?'selected':'' ?>>Disconnected</option>
           </select>
         </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Billing Rate Tier</label>
+        <select name="rate_tier_id" class="form-control">
+          <option value="">— No specific tier —</option>
+          <?php foreach ($billingRates as $bt): ?>
+          <option value="<?= h($bt['id']) ?>" <?= ($editCustomer['rate_tier_id'] ?? '') == $bt['id'] ? 'selected' : '' ?>>
+            <?= h($bt['label']) ?> — ₱<?= h($bt['base_charge']) ?> base + ₱<?= h($bt['rate_per_cubic']) ?>/m³
+          </option>
+          <?php endforeach; ?>
+        </select>
+        <div class="form-hint">Determines how the water bill is calculated for this customer.</div>
       </div>
       <div class="modal-footer">
         <a href="customers.php" class="btn btn-outline">Cancel</a>

@@ -10,660 +10,468 @@
 <meta name="theme-color" content="#023e8a">
 <title>AquaBill Field</title>
 <style>
-/* ── Reset ────────────────────────────────────────────── */
+/* ── Reset ── */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html{height:100%}
-body{
-  height:100%;overflow:hidden;
+html,body{height:100%;overflow:hidden;background:#f0f4f8;color:#1a2a3a;
   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
-  -webkit-font-smoothing:antialiased;font-size:16px;
-  background:#f0f4f8;color:#1a2a3a;
-}
+  -webkit-font-smoothing:antialiased;font-size:16px}
 
-/* ── Safe area vars ───────────────────────────────────── */
+/* ── CSS vars ── */
 :root{
-  --blue:#023e8a;--blue-m:#0077b6;--blue-l:#caf0f8;
-  --green:#2d6a4f;--green-bg:#d8f3dc;
-  --orange:#b5632a;--orange-bg:#ffe8d6;
-  --red:#c1121f;--red-bg:#ffe5e5;
-  --gray:#5a7085;--gray-l:#f0f4f8;--gray-b:#ccd8e5;
-  --surface:#fff;
-  --safe-t:env(safe-area-inset-top,0px);
-  --safe-b:env(safe-area-inset-bottom,0px);
+  --blue:#023e8a;--bm:#0077b6;--bl:#caf0f8;
+  --green:#2d6a4f;--gbg:#d8f3dc;
+  --ora:#b5632a;--obg:#ffe8d6;
+  --red:#c1121f;--rbg:#ffe5e5;
+  --gray:#5a7085;--gl:#f0f4f8;--gb:#ccd8e5;
+  --surf:#fff;
+  --st:env(safe-area-inset-top,0px);
+  --sb:env(safe-area-inset-bottom,0px);
 }
 
-/* ── App shell: fixed, full screen, flex column ───────── */
+/* ── App shell — fixed, full screen, flex column ── */
 #app{
-  position:fixed;
-  top:0;left:0;right:0;bottom:0;
-  display:flex;
-  flex-direction:column;
-  /* account for notch */
-  padding-top:var(--safe-t);
-  padding-bottom:var(--safe-b);
+  position:fixed;top:0;left:0;right:0;bottom:0;
+  display:flex;flex-direction:column;
+  padding-top:var(--st);padding-bottom:var(--sb);
 }
 
-/* ── Topbar: fixed height, never shrinks ─────────────── */
+/* ── Topbar ── */
 #topbar{
-  height:52px;
-  flex-shrink:0;
+  height:52px;flex-shrink:0;
   background:var(--blue);color:#fff;
   display:flex;align-items:center;padding:0 14px;gap:10px;
-  box-shadow:0 2px 8px rgba(0,0,0,.3);
-  z-index:20;
+  box-shadow:0 2px 8px rgba(0,0,0,.3);z-index:20;
 }
 #tb-title{font-size:16px;font-weight:800;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#tb-sub{font-size:10px;opacity:.7}
-.tb-btn{
-  background:rgba(255,255,255,.2);border:none;color:#fff;
-  border-radius:8px;padding:7px 9px;cursor:pointer;font-size:18px;
-  line-height:1;flex-shrink:0;min-width:36px;text-align:center;
-}
+.tb-btn{background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:8px;
+  padding:7px 10px;cursor:pointer;font-size:18px;line-height:1;min-width:36px;text-align:center}
 .tb-btn:active{opacity:.7}
-.net-dot{
-  width:8px;height:8px;border-radius:50%;flex-shrink:0;
-  background:#52b788;box-shadow:0 0 0 2px rgba(82,183,136,.35);
-  transition:background .3s;
-}
-.net-dot.off{background:#e63946;box-shadow:0 0 0 2px rgba(230,57,70,.35)}
+.nd{width:8px;height:8px;border-radius:50%;flex-shrink:0;
+  background:#52b788;box-shadow:0 0 0 2px rgba(82,183,136,.35);transition:background .3s}
+.nd.off{background:#e63946;box-shadow:0 0 0 2px rgba(230,57,70,.35)}
 
-/* ── Content area: fills all space between topbar and tabbar ── */
-/* KEY FIX: This is a flex item that grows, with overflow hidden.
-   Each page inside it is display:none or display:flex.
-   No position:absolute — that was causing the click-blocking bug. */
-#content{
-  flex:1;
-  overflow:hidden;  /* clip children — do NOT use overflow:auto here */
-  display:flex;
-  flex-direction:column;
-  min-height:0;     /* critical for flex children to not overflow */
-}
+/* ── Content: fills space between topbar & tabbar ── */
+#content{flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0}
 
-/* ── Pages: each fills content area, scrolls internally ─ */
-/* KEY FIX: pages are flex siblings, not absolutely positioned.
-   display:none hides them completely. display:flex makes them visible.
-   overflow-y:auto is on the page itself — properly clipped. */
-.page{
-  display:none;
-  flex-direction:column;
-  flex:1;
-  min-height:0;
-  overflow-y:auto;
-  -webkit-overflow-scrolling:touch;
-  padding:12px;
-  gap:0;
-}
-.page.active{display:flex}
+/* ── Pages: each fills content, scrolls internally ── */
+.pg{display:none;flex-direction:column;flex:1;min-height:0;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px;background:#f0f4f8}
+.pg.on{display:flex}
 
-/* ── Tabbar: fixed height, never shrinks, always above content ── */
-#tabbar{
-  height:56px;
-  flex-shrink:0;
-  background:var(--surface);
-  border-top:1px solid var(--gray-b);
-  display:flex;
-  z-index:20;
-}
-.tab-btn{
-  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:2px;cursor:pointer;border:none;background:none;
-  color:var(--gray);font-size:11px;font-weight:700;
-  padding:6px 0;-webkit-user-select:none;user-select:none;
-  transition:color .15s;
-}
-.tab-btn.active{color:var(--blue-m)}
-.tab-btn:active{background:rgba(0,119,182,.06)}
-.tab-icon-wrap{position:relative;display:inline-flex;align-items:center;justify-content:center}
-.tab-icon{font-size:23px;line-height:1}
-.tab-badge{
-  position:absolute;top:-5px;right:-9px;
-  background:var(--red);color:#fff;border-radius:9px;
-  padding:1px 5px;font-size:9px;font-weight:800;line-height:1.5;
-  display:none;
-}
+/* ── Tabbar ── */
+#tabbar{height:56px;flex-shrink:0;background:var(--surf);border-top:1px solid var(--gb);display:flex;z-index:20}
+.tbt{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:2px;border:none;background:none;color:var(--gray);font-size:11px;font-weight:700;
+  cursor:pointer;padding:6px 0;-webkit-user-select:none;user-select:none}
+.tbt.on{color:var(--bm)}
+.tbt:active{background:rgba(0,119,182,.06)}
+.ti{position:relative;display:inline-flex;font-size:23px;line-height:1}
+.tbdg{position:absolute;top:-5px;right:-9px;background:var(--red);color:#fff;
+  border-radius:9px;padding:1px 5px;font-size:9px;font-weight:800;line-height:1.5;display:none}
 
-/* ── Cards ──────────────────────────────────────────────── */
-.card{
-  background:var(--surface);border-radius:14px;padding:14px;
-  box-shadow:0 2px 10px rgba(0,100,200,.08);
-  margin-bottom:10px;flex-shrink:0;
-}
-.card-title{
-  font-size:11px;font-weight:800;color:var(--blue);
-  text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;
-}
+/* ── Cards ── */
+.card{background:var(--surf);border-radius:14px;padding:14px;
+  box-shadow:0 2px 10px rgba(0,100,200,.08);margin-bottom:10px;flex-shrink:0}
+.ct{font-size:11px;font-weight:800;color:var(--blue);text-transform:uppercase;
+  letter-spacing:.6px;margin-bottom:10px}
 
-/* ── Stat row ───────────────────────────────────────────── */
-.stat-row{
-  display:grid;grid-template-columns:repeat(3,1fr);
-  gap:8px;margin-bottom:10px;flex-shrink:0;
-}
-.stat-box{
-  background:var(--surface);border-radius:12px;padding:11px 6px;
-  text-align:center;box-shadow:0 2px 8px rgba(0,100,200,.07);
-}
-.stat-val{font-size:22px;font-weight:900;line-height:1}
-.stat-lbl{font-size:10px;color:var(--gray);margin-top:2px;font-weight:600}
+/* ── Stat row ── */
+.sr{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;flex-shrink:0}
+.sb2{background:var(--surf);border-radius:12px;padding:11px 6px;text-align:center;
+  box-shadow:0 2px 8px rgba(0,100,200,.07)}
+.sv{font-size:22px;font-weight:900;line-height:1}
+.sl{font-size:10px;color:var(--gray);margin-top:2px;font-weight:600}
 
-/* ── Progress ───────────────────────────────────────────── */
-.progress-wrap{height:6px;background:var(--gray-l);border-radius:3px;overflow:hidden;margin:4px 0 10px;flex-shrink:0}
-.progress-fill{height:100%;background:var(--blue-m);border-radius:3px;transition:width .4s}
+/* ── Progress ── */
+.pw{height:6px;background:var(--gl);border-radius:3px;overflow:hidden;margin:4px 0 10px;flex-shrink:0}
+.pf{height:100%;background:var(--bm);border-radius:3px;transition:width .4s}
 
-/* ── Filter chips ───────────────────────────────────────── */
-.chips{
-  display:flex;gap:7px;overflow-x:auto;padding-bottom:2px;
-  margin-bottom:10px;flex-shrink:0;
-}
+/* ── Chips ── */
+.chips{display:flex;gap:7px;overflow-x:auto;padding-bottom:2px;margin-bottom:10px;flex-shrink:0}
 .chips::-webkit-scrollbar{display:none}
-.chip{
-  padding:6px 14px;border-radius:20px;border:1.5px solid var(--gray-b);
-  background:var(--surface);color:var(--gray);font-size:12px;font-weight:700;
-  cursor:pointer;white-space:nowrap;flex-shrink:0;
-  -webkit-user-select:none;user-select:none;
-}
-.chip.active{background:var(--blue-m);color:#fff;border-color:var(--blue-m)}
+.chip{padding:6px 14px;border-radius:20px;border:1.5px solid var(--gb);background:var(--surf);
+  color:var(--gray);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0}
+.chip.on{background:var(--bm);color:#fff;border-color:var(--bm)}
 
-/* ── Search ─────────────────────────────────────────────── */
-.search-wrap{position:relative;margin-bottom:10px;flex-shrink:0}
-.search-wrap input{
-  width:100%;padding:10px 12px 10px 38px;
-  border-radius:11px;border:1.5px solid var(--gray-b);
-  background:var(--surface);font-size:15px;outline:none;
-  -webkit-appearance:none;
-}
-.search-wrap input:focus{border-color:var(--blue-m)}
-.search-icon{
-  position:absolute;left:12px;top:50%;transform:translateY(-50%);
-  color:var(--gray);font-size:15px;pointer-events:none;
-}
+/* ── Search ── */
+.sw{position:relative;margin-bottom:10px;flex-shrink:0}
+.sw input{width:100%;padding:10px 12px 10px 38px;border-radius:11px;
+  border:1.5px solid var(--gb);background:var(--surf);font-size:15px;outline:none;-webkit-appearance:none}
+.sw input:focus{border-color:var(--bm)}
+.si{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--gray);font-size:15px;pointer-events:none}
 
-/* ── Customer list ──────────────────────────────────────── */
-/* KEY FIX: list is a normal block, not a flex item with flex:1.
-   The PAGE itself scrolls, not a child div inside it. */
-#cust-list{}
-
-.cust-item{
-  background:var(--surface);border-radius:12px;padding:12px 13px;
+/* ── Customer items ── */
+.ci{background:var(--surf);border-radius:12px;padding:12px 13px;
   display:flex;align-items:center;gap:11px;margin-bottom:8px;
-  border:2px solid transparent;
-  cursor:pointer;-webkit-user-select:none;user-select:none;
-}
-.cust-item:active{background:#eef4fa}
-.cust-item.done{border-color:var(--green);background:#f6fff9}
-.cust-item.pend{border-color:var(--orange);background:#fff9f5}
-.cust-av{
-  width:42px;height:42px;border-radius:12px;
-  background:var(--blue);color:#fff;
-  display:flex;align-items:center;justify-content:center;
-  font-size:17px;font-weight:900;flex-shrink:0;
-}
-.cust-info{flex:1;min-width:0}
-.cust-name{font-weight:800;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cust-meta{font-size:11px;color:var(--gray);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cust-right{text-align:right;flex-shrink:0}
-.cust-rdg{font-size:13px;font-weight:800;color:var(--blue-m)}
-.cust-rdg-lbl{font-size:10px;color:var(--gray);margin-top:1px}
+  border:2px solid transparent;cursor:pointer;-webkit-user-select:none;user-select:none}
+.ci:active{background:#eef4fa}
+.ci.done{border-color:var(--green);background:#f6fff9}
+.ci.pend{border-color:var(--ora);background:#fff9f5}
+.cav{width:42px;height:42px;border-radius:12px;background:var(--blue);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:900;flex-shrink:0}
+.cnfo{flex:1;min-width:0}
+.cn{font-weight:800;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cm{font-size:11px;color:var(--gray);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cr{text-align:right;flex-shrink:0}
+.crv{font-size:13px;font-weight:800;color:var(--bm)}
+.crl{font-size:10px;color:var(--gray);margin-top:1px}
 
-/* ── Reading form header ────────────────────────────────── */
-.rf-hdr{
-  background:linear-gradient(135deg,var(--blue),var(--blue-m));
-  color:#fff;border-radius:14px;padding:16px;margin-bottom:10px;flex-shrink:0;
-}
-.rf-name{font-size:18px;font-weight:900;margin-bottom:6px}
-.rf-chips{display:flex;flex-wrap:wrap;gap:5px;font-size:11px}
-.rf-chip{background:rgba(255,255,255,.2);border-radius:6px;padding:2px 8px;font-weight:600}
-.rf-addr{font-size:11px;opacity:.75;margin-top:5px}
+/* ── Reading form header ── */
+.rfh{background:linear-gradient(135deg,var(--blue),var(--bm));color:#fff;
+  border-radius:14px;padding:16px;margin-bottom:10px;flex-shrink:0}
+.rfn{font-size:18px;font-weight:900;margin-bottom:6px}
+.rfm{display:flex;flex-wrap:wrap;gap:5px}
+.rfc{background:rgba(255,255,255,.2);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600}
+.rfa{font-size:11px;opacity:.75;margin-top:5px}
 
-.prev-box{
-  background:var(--blue-l);border-radius:12px;padding:12px;
-  text-align:center;margin-bottom:10px;flex-shrink:0;
-}
-.prev-val{font-size:28px;font-weight:900;color:var(--blue)}
-.prev-lbl{font-size:11px;color:var(--gray);margin-top:2px}
+.pb{background:var(--bl);border-radius:12px;padding:12px;text-align:center;margin-bottom:10px;flex-shrink:0}
+.pv{font-size:28px;font-weight:900;color:var(--blue)}
+.pl{font-size:11px;color:var(--gray);margin-top:2px}
 
-.big-input{
-  width:100%;padding:16px 12px;text-align:center;font-size:34px;font-weight:900;
-  border:2.5px solid var(--gray-b);border-radius:12px;outline:none;
-  color:var(--blue);background:var(--surface);letter-spacing:1px;
-  margin-bottom:8px;-webkit-appearance:none;
-}
-.big-input:focus{border-color:var(--blue-m);box-shadow:0 0 0 3px rgba(0,119,182,.12)}
+.bi{width:100%;padding:16px 12px;text-align:center;font-size:34px;font-weight:900;
+  border:2.5px solid var(--gb);border-radius:12px;outline:none;color:var(--blue);
+  background:var(--surf);letter-spacing:1px;margin-bottom:8px;-webkit-appearance:none}
+.bi:focus{border-color:var(--bm);box-shadow:0 0 0 3px rgba(0,119,182,.12)}
 
-.cons-box{
-  border-radius:10px;padding:10px;text-align:center;
-  font-size:14px;font-weight:800;margin-bottom:10px;display:none;flex-shrink:0;
-}
-.cons-ok  {background:var(--green-bg);color:var(--green)}
-.cons-warn{background:var(--orange-bg);color:var(--orange)}
-.cons-err {background:var(--red-bg);color:var(--red)}
+.cb{border-radius:10px;padding:10px;text-align:center;font-size:14px;font-weight:800;
+  margin-bottom:10px;display:none;flex-shrink:0}
+.cbok{background:var(--gbg);color:var(--green)}
+.cbwarn{background:var(--obg);color:var(--ora)}
+.cberr{background:var(--rbg);color:var(--red)}
 
-/* ── Form controls ─────────────────────────────────────── */
+/* ── Form ── */
 .fg{margin-bottom:10px}
 .fl{display:block;font-size:12px;font-weight:700;color:var(--gray);margin-bottom:4px}
-.fc{
-  width:100%;padding:10px 12px;border-radius:10px;
-  border:1.5px solid var(--gray-b);background:var(--surface);
-  font-size:15px;outline:none;-webkit-appearance:none;
-}
-.fc:focus{border-color:var(--blue-m)}
+.fc{width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--gb);
+  background:var(--surf);font-size:15px;outline:none;-webkit-appearance:none}
+.fc:focus{border-color:var(--bm)}
 
-/* ── Photo button ───────────────────────────────────────── */
-.photo-btn{
-  width:100%;padding:13px;border:2px dashed var(--gray-b);border-radius:12px;
-  background:var(--gray-l);color:var(--gray);font-size:14px;font-weight:600;
-  cursor:pointer;text-align:center;display:flex;align-items:center;
-  justify-content:center;gap:7px;margin-bottom:10px;flex-shrink:0;
-}
-.photo-preview{width:100%;border-radius:10px;margin-bottom:10px;display:none;max-height:180px;object-fit:cover;flex-shrink:0}
+/* ── Photo ── */
+.phbtn{width:100%;padding:13px;border:2px dashed var(--gb);border-radius:12px;
+  background:var(--gl);color:var(--gray);font-size:14px;font-weight:600;
+  cursor:pointer;text-align:center;display:flex;align-items:center;justify-content:center;
+  gap:7px;margin-bottom:10px;flex-shrink:0}
+.php{width:100%;border-radius:10px;margin-bottom:10px;display:none;max-height:180px;object-fit:cover;flex-shrink:0}
 
-/* ── Edit meter section ─────────────────────────────────── */
-.edit-section{
-  background:var(--gray-l);border-radius:12px;
-  margin-bottom:10px;overflow:hidden;flex-shrink:0;
-}
-.edit-toggle{
-  width:100%;padding:12px 14px;background:none;border:none;
-  display:flex;justify-content:space-between;align-items:center;
-  font-size:13px;font-weight:800;color:var(--blue);cursor:pointer;
-  text-align:left;
-}
-.edit-toggle:active{background:rgba(0,0,0,.04)}
-.edit-body{padding:0 14px 12px;display:none}
-.edit-body.open{display:block}
+/* ── Queue ── */
+.qi{background:var(--surf);border-radius:12px;padding:12px 13px;
+  margin-bottom:8px;border-left:4px solid var(--ora)}
+.qi.done{border-color:var(--green);opacity:.65}
+.qit{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px}
+.qin{font-weight:800;font-size:14px}
+.qis{font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px}
+.qisp{background:var(--obg);color:var(--ora)}
+.qisd{background:var(--gbg);color:var(--green)}
+.qidl{background:none;border:none;color:var(--red);font-size:22px;cursor:pointer;padding:0;line-height:1;margin-left:6px}
+.qim{font-size:12px;color:var(--gray);display:flex;flex-wrap:wrap;gap:8px;margin-top:3px}
 
-/* ── Buttons ────────────────────────────────────────────── */
-.btn{
-  display:flex;align-items:center;justify-content:center;gap:7px;
-  width:100%;padding:14px;border-radius:12px;border:none;
-  font-size:15px;font-weight:800;cursor:pointer;
-  -webkit-user-select:none;user-select:none;font-family:inherit;
-  transition:opacity .15s,transform .1s;
-}
+/* ── Buttons ── */
+.btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;
+  padding:14px;border-radius:12px;border:none;font-size:15px;font-weight:800;
+  cursor:pointer;font-family:inherit;transition:opacity .15s,transform .1s}
 .btn:active{transform:scale(.97);opacity:.85}
-.btn-primary{background:var(--blue-m);color:#fff}
-.btn-success{background:var(--green);color:#fff}
-.btn-danger {background:var(--red);color:#fff}
-.btn-outline{background:none;border:2px solid var(--gray-b);color:var(--gray)}
-.btn-sm{padding:9px 15px;font-size:13px;width:auto;border-radius:9px}
-.btn-row{display:flex;gap:8px;margin-bottom:10px;flex-shrink:0}
-.btn-row .btn{flex:1}
+.btnp{background:var(--bm);color:#fff}
+.btns{background:var(--green);color:#fff}
+.btnd{background:var(--red);color:#fff}
+.btno{background:none;border:2px solid var(--gb);color:var(--gray)}
+.btnsm{padding:9px 15px;font-size:13px;width:auto;border-radius:9px}
+.br{display:flex;gap:8px;margin-bottom:10px;flex-shrink:0}
+.br .btn{flex:1}
 
-/* ── Info / warn boxes ─────────────────────────────────── */
-.info-box{background:var(--blue-l);color:var(--blue-m);border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:10px;line-height:1.6;flex-shrink:0}
-.warn-box{background:var(--orange-bg);color:var(--orange);border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:10px;flex-shrink:0}
-.danger-box{background:var(--red-bg);color:var(--red);border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:10px;flex-shrink:0}
+/* ── Back btn ── */
+.bk{display:inline-flex;align-items:center;gap:5px;background:none;border:none;
+  color:var(--bm);font-size:14px;font-weight:800;cursor:pointer;padding:0;margin-bottom:12px;flex-shrink:0}
 
-/* ── Queue items ────────────────────────────────────────── */
-.qi{
-  background:var(--surface);border-radius:12px;padding:12px 13px;
-  margin-bottom:8px;border-left:4px solid var(--orange);
-}
-.qi.synced{border-color:var(--green);opacity:.6}
-.qi-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px}
-.qi-name{font-weight:800;font-size:14px}
-.qi-status{font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px}
-.qi-pend{background:var(--orange-bg);color:var(--orange)}
-.qi-done{background:var(--green-bg);color:var(--green)}
-.qi-del{background:none;border:none;color:var(--red);font-size:22px;cursor:pointer;padding:0;line-height:1;margin-left:6px}
-.qi-meta{font-size:12px;color:var(--gray);display:flex;flex-wrap:wrap;gap:8px;margin-top:3px}
-.qi-rdg{font-weight:800;color:var(--blue-m)}
+/* ── Info/warn boxes ── */
+.ib{background:var(--bl);color:var(--bm);border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:10px;line-height:1.6;flex-shrink:0}
+.wb{background:var(--obg);color:var(--ora);border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:10px;flex-shrink:0}
+.db2{background:var(--rbg);color:var(--red);border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:10px;flex-shrink:0}
 
-/* ── Sync log ───────────────────────────────────────────── */
-.sync-log{
-  background:#1a2a3a;border-radius:10px;padding:11px;
-  font-size:11px;font-family:monospace;max-height:150px;
-  overflow-y:auto;color:#90e0ef;margin-bottom:10px;flex-shrink:0;
-}
-.l-ok{color:#52b788}.l-err{color:#e63946}.l-info{color:#90e0ef}
+/* ── Sync log ── */
+.lg{background:#1a2a3a;border-radius:10px;padding:11px;font-size:11px;font-family:monospace;
+  max-height:150px;overflow-y:auto;color:#90e0ef;margin-bottom:10px;display:none;flex-shrink:0}
+.lok{color:#52b788}.lerr{color:#e63946}.linf{color:#90e0ef}
 
-/* ── Session info ───────────────────────────────────────── */
-.si-row{
-  display:flex;justify-content:space-between;align-items:center;
-  padding:7px 0;border-bottom:1px solid var(--gray-b);font-size:13px;
-}
-.si-row:last-child{border-bottom:none}
+/* ── Sess info ── */
+.sir{display:flex;justify-content:space-between;align-items:center;
+  padding:7px 0;border-bottom:1px solid var(--gb);font-size:13px}
+.sir:last-child{border-bottom:none}
 
-/* ── Empty state ────────────────────────────────────────── */
-.empty{text-align:center;padding:40px 16px;color:var(--gray)}
-.empty-icon{font-size:44px;margin-bottom:10px}
-.empty-title{font-size:15px;font-weight:700;color:#334;margin-bottom:4px}
-.empty-sub{font-size:13px;line-height:1.5}
+/* ── Empty ── */
+.emp{text-align:center;padding:36px 16px;color:var(--gray)}
+.ei{font-size:44px;margin-bottom:10px}
+.et{font-size:15px;font-weight:700;color:#334;margin-bottom:4px}
+.es{font-size:13px;line-height:1.5}
 
-/* ── Back button ────────────────────────────────────────── */
-.back-btn{
-  display:inline-flex;align-items:center;gap:5px;
-  background:none;border:none;color:var(--blue-m);
-  font-size:14px;font-weight:800;cursor:pointer;
-  padding:0;margin-bottom:12px;flex-shrink:0;
-}
+/* ── Toast ── */
+#toast{position:fixed;bottom:calc(56px + var(--sb) + 8px);left:50%;
+  transform:translateX(-50%) translateY(16px);background:rgba(26,42,58,.95);color:#fff;
+  border-radius:10px;padding:10px 18px;font-size:13px;font-weight:700;
+  z-index:9999;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;
+  max-width:88vw;text-align:center}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 
-/* ── Toast ──────────────────────────────────────────────── */
-#toast{
-  position:fixed;
-  bottom:calc(56px + var(--safe-b) + 8px);
-  left:50%;transform:translateX(-50%) translateY(16px);
-  background:rgba(26,42,58,.95);color:#fff;border-radius:10px;
-  padding:10px 18px;font-size:13px;font-weight:700;
-  white-space:nowrap;z-index:9999;opacity:0;
-  transition:opacity .25s,transform .25s;pointer-events:none;
-  max-width:88vw;white-space:normal;text-align:center;
-}
-#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+/* ── Print receipt overlay ── */
+#pr-overlay{display:none;position:fixed;inset:0;z-index:100;
+  background:rgba(0,0,0,.6);align-items:center;justify-content:center;padding:16px}
+#pr-overlay.on{display:flex}
+#pr-box{background:#fff;color:#111;border-radius:14px;padding:24px;
+  width:100%;max-width:360px;font-family:'Courier New',monospace;
+  max-height:90vh;overflow-y:auto}
+.pr-hdr{text-align:center;border-bottom:2px dashed #ccc;padding-bottom:12px;margin-bottom:12px}
+.pr-org{font-size:15px;font-weight:900;font-family:sans-serif;letter-spacing:.3px}
+.pr-addr{font-size:11px;color:#555;margin-top:2px}
+.pr-title{font-size:12px;font-weight:700;margin-top:8px;letter-spacing:2px;text-transform:uppercase}
+.pr-row{display:flex;justify-content:space-between;padding:2px 0;font-size:12px;line-height:1.9}
+.pr-div{border:none;border-top:1px dashed #ccc;margin:7px 0}
+.pr-amt{text-align:center;font-size:24px;font-weight:900;color:#2d6a4f;padding:8px 0}
+.pr-foot{text-align:center;font-size:10px;color:#777;margin-top:10px;border-top:1px dashed #ccc;padding-top:8px;line-height:1.6}
+.pr-btns{display:flex;gap:10px;margin-top:14px}
+.pr-btns button{flex:1;padding:11px;border-radius:9px;border:none;font-size:14px;font-weight:700;cursor:pointer}
 
-/* ── Login ──────────────────────────────────────────────── */
-#login{
-  position:fixed;inset:0;background:var(--blue);
-  display:flex;align-items:center;justify-content:center;
-  padding:20px;z-index:100;
-}
-.login-box{
-  background:#fff;border-radius:18px;padding:26px;
-  width:100%;max-width:360px;box-shadow:0 12px 40px rgba(0,0,0,.3);
-}
-.login-logo{text-align:center;margin-bottom:20px}
-.login-logo .li{font-size:44px;margin-bottom:6px}
-.login-logo h1{font-size:21px;font-weight:900;color:var(--blue);margin:0}
-.login-logo p{color:var(--gray);font-size:12px;margin:3px 0 0}
+/* ── Login ── */
+#login{position:fixed;inset:0;background:var(--blue);display:flex;
+  align-items:center;justify-content:center;padding:20px;z-index:100}
+.lbx{background:#fff;border-radius:18px;padding:26px;width:100%;max-width:360px;box-shadow:0 12px 40px rgba(0,0,0,.3)}
+.llo{text-align:center;margin-bottom:20px}
+.lli{font-size:44px;margin-bottom:6px}
+.llo h1{font-size:21px;font-weight:900;color:var(--blue);margin:0}
+.llo p{color:var(--gray);font-size:12px;margin:3px 0 0}
 .err{color:var(--red);font-size:12px;text-align:center;margin:5px 0;display:none}
 
-/* ── Animations ─────────────────────────────────────────── */
-@keyframes slideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-.anim{animation:slideUp .25s ease both}
+/* ── Animations ── */
+@keyframes su{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.an{animation:su .25s ease both}
+
+/* ── Print CSS ── */
+@media print{
+  body>*{display:none!important}
+  #printable{display:block!important;position:fixed;inset:0;background:#fff;
+    padding:20px;font-family:'Courier New',monospace;font-size:10pt;color:#000;z-index:99999}
+  #printable *{color:#000!important;background:transparent!important}
+}
 </style>
 </head>
 <body>
 
-<!-- LOGIN -->
+<!-- Printable slot (hidden, shown on print) -->
+<div id="printable" style="display:none"></div>
+
+<!-- ══ LOGIN ══ -->
 <div id="login">
-  <div class="login-box">
-    <div class="login-logo">
-      <div class="li">💧</div>
-      <h1>AquaBill Field</h1>
-      <p>Meter Reading App · Works Offline</p>
-    </div>
-    <div class="fg">
-      <label class="fl">Server URL</label>
-      <input type="url" id="l-url" class="fc" placeholder="http://192.168.1.x/aquabill">
-    </div>
-    <div class="fg">
-      <label class="fl">Email</label>
-      <input type="email" id="l-email" class="fc" placeholder="staff@barangay.gov" autocomplete="email">
-    </div>
-    <div class="fg" style="margin-bottom:6px">
-      <label class="fl">Password</label>
-      <input type="password" id="l-pass" class="fc" placeholder="••••••••" autocomplete="current-password">
-    </div>
-    <div class="err" id="l-err"></div>
-    <button class="btn btn-primary" id="l-btn" onclick="doLogin()" style="margin-top:10px">
-      <span id="l-btn-txt">Sign In</span>
-    </button>
-    <p style="font-size:11px;color:var(--gray);text-align:center;margin-top:12px;line-height:1.6">
-      Works offline after first login.<br>Readings sync automatically when online.
-    </p>
+  <div class="lbx">
+    <div class="llo"><div class="lli">💧</div><h1>AquaBill Field</h1><p>Meter Reading App · Works Offline</p></div>
+    <div class="fg"><label class="fl">Server URL</label><input type="url" id="lu" class="fc" placeholder="http://192.168.1.x/aquabill"></div>
+    <div class="fg"><label class="fl">Email</label><input type="email" id="le" class="fc" placeholder="staff@barangay.gov" autocomplete="email"></div>
+    <div class="fg" style="margin-bottom:6px"><label class="fl">Password</label><input type="password" id="lp" class="fc" placeholder="••••••••" autocomplete="current-password"></div>
+    <div class="err" id="lerr"></div>
+    <button class="btn btnp" id="lbtn" onclick="doLogin()" style="margin-top:10px"><span id="lbtxt">Sign In</span></button>
+    <p style="font-size:11px;color:var(--gray);text-align:center;margin-top:12px;line-height:1.6">Works offline after first login.<br>Readings sync automatically when online.</p>
   </div>
 </div>
 
-<!-- APP -->
+<!-- ══ MAIN APP ══ -->
 <div id="app" style="display:none">
 
-  <!-- TOPBAR -->
+  <!-- Topbar -->
   <div id="topbar">
     <span style="font-size:21px;flex-shrink:0">💧</span>
     <div style="flex:1;min-width:0">
       <div id="tb-title" style="font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">AquaBill Field</div>
       <div id="tb-sub" style="font-size:10px;opacity:.7">Loading…</div>
     </div>
-    <div class="net-dot" id="net-dot" title="Connection"></div>
-    <button class="tb-btn" onclick="handleRefresh()" title="Refresh">↻</button>
-    <button class="tb-btn" onclick="doLogout()" title="Logout" style="font-size:13px">⎋</button>
+    <div class="nd" id="nd"></div>
+    <button class="tb-btn" onclick="handleRefresh()">↻</button>
+    <button class="tb-btn" onclick="doLogout()" style="font-size:13px">⎋</button>
   </div>
 
-  <!-- CONTENT (flex:1, min-height:0) -->
   <div id="content">
 
-    <!-- PAGE: CUSTOMERS -->
-    <div class="page active" id="pg-customers">
-      <div class="stat-row anim">
-        <div class="stat-box"><div class="stat-val" id="s-total" style="color:var(--blue-m)">—</div><div class="stat-lbl">Total</div></div>
-        <div class="stat-box"><div class="stat-val" id="s-done"  style="color:var(--green)">0</div><div class="stat-lbl">Done Today</div></div>
-        <div class="stat-box"><div class="stat-val" id="s-pend"  style="color:var(--orange)">0</div><div class="stat-lbl">To Sync</div></div>
+    <!-- PAGE: Customers -->
+    <div class="pg on" id="pg-c">
+      <div class="sr an">
+        <div class="sb2"><div class="sv" id="st" style="color:var(--bm)">—</div><div class="sl">Total</div></div>
+        <div class="sb2"><div class="sv" id="sd" style="color:var(--green)">0</div><div class="sl">Done Today</div></div>
+        <div class="sb2"><div class="sv" id="sp" style="color:var(--ora)">0</div><div class="sl">To Sync</div></div>
       </div>
-
-      <div id="pg-progress" style="display:none;flex-shrink:0">
+      <div id="pp" style="display:none;flex-shrink:0">
         <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;margin-bottom:3px">
-          <span style="color:var(--gray)">Today's Progress</span>
-          <span id="pg-pct" style="color:var(--blue-m)">0%</span>
+          <span style="color:var(--gray)">Today's Progress</span><span id="ppt" style="color:var(--bm)">0%</span>
         </div>
-        <div class="progress-wrap"><div class="progress-fill" id="pg-fill" style="width:0%"></div></div>
+        <div class="pw"><div class="pf" id="ppf" style="width:0%"></div></div>
       </div>
-
-      <div class="search-wrap">
-        <span class="search-icon">🔍</span>
-        <input type="search" id="c-search" placeholder="Search name or meter…" oninput="renderList()">
+      <div class="sw"><span class="si">🔍</span><input type="search" id="cs" placeholder="Search name or meter…" oninput="renderList()"></div>
+      <div class="chips" id="fchips">
+        <div class="chip on" data-f="all" onclick="setF(this)">All</div>
+        <div class="chip" data-f="pend" onclick="setF(this)">⏳ Pending</div>
+        <div class="chip" data-f="done" onclick="setF(this)">✅ Done</div>
       </div>
-
-      <div class="chips" id="filter-chips">
-        <div class="chip active" data-f="all"  onclick="setFilter(this)">All</div>
-        <div class="chip"        data-f="pend" onclick="setFilter(this)">⏳ Pending</div>
-        <div class="chip"        data-f="done" onclick="setFilter(this)">✅ Done</div>
-      </div>
-
-      <!-- Customer list — plain block, page itself scrolls -->
-      <div id="cust-list">
-        <div class="empty"><div class="empty-icon">⏳</div><div class="empty-title">Loading customers…</div></div>
-      </div>
+      <div id="clist"></div>
     </div>
 
-    <!-- PAGE: READING FORM -->
-    <div class="page" id="pg-reading">
-      <button class="back-btn" onclick="closeReading()">← Back to Customers</button>
+    <!-- PAGE: Reading form -->
+    <div class="pg" id="pg-r">
+      <button class="bk" onclick="closeR()">← Back</button>
 
-      <div class="rf-hdr anim">
-        <div class="rf-name" id="rf-name">—</div>
-        <div class="rf-chips">
-          <span class="rf-chip" id="rf-id">—</span>
-          <span class="rf-chip" id="rf-meter">—</span>
-          <span class="rf-chip" id="rf-status">Active</span>
+      <div class="rfh an">
+        <div class="rfn" id="rfn">—</div>
+        <div class="rfm">
+          <span class="rfc" id="rfi">—</span>
+          <span class="rfc" id="rfm2">—</span>
+          <span class="rfc" id="rfst">Active</span>
         </div>
-        <div class="rf-addr" id="rf-addr">—</div>
+        <div class="rfa" id="rfa">—</div>
       </div>
 
-      <!-- Edit meter section -->
-      <div class="edit-section">
-        <button class="edit-toggle" onclick="toggleEdit()" type="button">
-          ✏️ Edit Meter / Customer Details
-          <span id="edit-arrow">＋</span>
-        </button>
-        <div class="edit-body" id="edit-body">
-          <div class="fg"><label class="fl">Meter Number</label><input type="text" id="em-meter" class="fc" placeholder="e.g. M-0011"></div>
-          <div class="fg"><label class="fl">Customer Name</label><input type="text" id="em-name" class="fc"></div>
-          <div class="fg" style="margin-bottom:10px"><label class="fl">Address</label><input type="text" id="em-addr" class="fc"></div>
-          <div class="btn-row" style="margin-bottom:0">
-            <button class="btn btn-outline btn-sm" onclick="toggleEdit()" type="button">Cancel</button>
-            <button class="btn btn-primary btn-sm" onclick="saveEditMeter()" type="button">💾 Save</button>
+      <div class="pb an"><div class="pv" id="rfpv">0</div><div class="pl">Previous Reading (m³)</div></div>
+
+      <div class="card" style="flex-shrink:0">
+        <div class="ct">Enter Current Reading</div>
+        <input type="number" class="bi" id="rfcv" inputmode="decimal" step="0.01" min="0" placeholder="0.00" oninput="updPrev()">
+        <div class="cb" id="cbox"><span id="cval">0</span> m³ consumption</div>
+        <div class="fg"><label class="fl">Reading Date</label><input type="date" class="fc" id="rfdt"></div>
+        <div class="fg" style="margin-bottom:10px"><label class="fl">Notes (optional)</label><input type="text" class="fc" id="rfnt" placeholder="e.g. Meter tampered…"></div>
+      </div>
+
+      <label class="phbtn" for="rfph"><span id="phlbl">📷 Add Meter Photo (optional)</span></label>
+      <input type="file" id="rfph" accept="image/*" capture="environment" style="display:none" onchange="handlePh(this)">
+      <img id="phpv" class="php" alt="Meter photo">
+
+      <div class="br"><button class="btn btno" onclick="closeR()">Cancel</button><button class="btn btns" onclick="saveR()">💾 Save Reading</button></div>
+
+      <!-- Print section: shows after reading is saved for this customer -->
+      <div id="print-section" style="display:none;flex-shrink:0">
+        <div class="card" style="border:2px solid var(--bm)">
+          <div class="ct" style="color:var(--bm)">🖨️ Print Documents</div>
+          <div class="ib" style="margin-bottom:10px">Reading saved! You can now print the bill statement or payment receipt if available.</div>
+          <div class="br">
+            <button class="btn btno" onclick="printBill()" id="print-bill-btn">📄 Print Bill</button>
+            <button class="btn btno" onclick="printReceipt()" id="print-rcpt-btn" style="display:none">🧾 Print Receipt</button>
           </div>
         </div>
       </div>
-
-      <div class="prev-box anim">
-        <div class="prev-val" id="rf-prev">0</div>
-        <div class="prev-lbl">Previous Reading (m³)</div>
-      </div>
-
-      <div class="card" style="flex-shrink:0">
-        <div class="card-title">Enter Current Reading</div>
-        <input type="number" class="big-input" id="rf-curr"
-               inputmode="decimal" step="0.01" min="0" placeholder="0.00"
-               oninput="updatePreview()">
-        <div class="cons-box" id="cons-box">
-          💧 Consumption: <span id="cons-val">0</span> m³
-        </div>
-        <div class="fg">
-          <label class="fl">Reading Date</label>
-          <input type="date" class="fc" id="rf-date">
-        </div>
-        <div class="fg" style="margin-bottom:10px">
-          <label class="fl">Notes (optional)</label>
-          <input type="text" class="fc" id="rf-notes" placeholder="e.g. Meter damaged…">
-        </div>
-      </div>
-
-      <label class="photo-btn" for="rf-photo">
-        <span id="photo-lbl">📷 Add Meter Photo (optional)</span>
-      </label>
-      <input type="file" id="rf-photo" accept="image/*" capture="environment"
-             style="display:none" onchange="handlePhoto(this)">
-      <img id="photo-prev" class="photo-preview" alt="Meter photo">
-
-      <div class="btn-row">
-        <button class="btn btn-outline" onclick="closeReading()" type="button">Cancel</button>
-        <button class="btn btn-success" onclick="saveReading()" type="button">💾 Save Reading</button>
-      </div>
     </div>
 
-    <!-- PAGE: QUEUE -->
-    <div class="page" id="pg-queue">
+    <!-- PAGE: Queue -->
+    <div class="pg" id="pg-q">
       <div class="card">
-        <div class="card-title">📋 Sync Queue</div>
-        <div id="q-summary" style="font-size:13px;color:var(--gray);margin-bottom:10px">Loading…</div>
-        <button class="btn btn-primary" id="sync-btn" onclick="syncNow()" style="margin-bottom:8px" type="button">☁️ Sync to Server</button>
-        <button class="btn btn-outline" onclick="toggleLog()" type="button" style="font-size:13px;padding:9px">📄 Show Log</button>
+        <div class="ct">📋 Sync Queue</div>
+        <div id="qsum" style="font-size:13px;color:var(--gray);margin-bottom:10px">Loading…</div>
+        <button class="btn btnp" id="syncbtn" onclick="syncNow()" style="margin-bottom:8px">☁️ Sync to Server</button>
+        <button class="btn btno" onclick="tgLog()" style="font-size:13px;padding:9px">📄 Show Log</button>
       </div>
-      <div class="sync-log" id="sync-log" style="display:none"></div>
-      <div id="queue-list"></div>
+      <div class="lg" id="slog"></div>
+      <div id="qlist"></div>
     </div>
 
-    <!-- PAGE: SETTINGS -->
-    <div class="page" id="pg-settings">
+    <!-- PAGE: Settings -->
+    <div class="pg" id="pg-s">
       <div class="card">
-        <div class="card-title">⚙️ Server Connection</div>
-        <div class="fg">
-          <label class="fl">Server URL</label>
-          <input type="url" id="st-url" class="fc" placeholder="http://192.168.1.x/aquabill">
+        <div class="ct">⚙️ Server Connection</div>
+        <div class="fg"><label class="fl">Server URL</label><input type="url" id="sturl" class="fc" placeholder="http://192.168.1.x/aquabill"></div>
+        <div class="br">
+          <button class="btn btno btnsm" onclick="testConn()">🔌 Test</button>
+          <button class="btn btnp btnsm" onclick="saveSet()">💾 Save</button>
         </div>
-        <div class="btn-row">
-          <button class="btn btn-outline btn-sm" onclick="testConn()" type="button">🔌 Test</button>
-          <button class="btn btn-primary btn-sm" onclick="saveSettings()" type="button">💾 Save</button>
-        </div>
-        <div class="sync-log" id="st-log" style="display:block;min-height:40px;margin-bottom:0"></div>
+        <div class="lg" id="stlog" style="display:block;min-height:40px;margin-bottom:0"></div>
       </div>
-
+      <div class="card"><div class="ct">📊 Session</div><div id="sinfo"></div></div>
       <div class="card">
-        <div class="card-title">📊 Session Info</div>
-        <div id="sess-info"></div>
-      </div>
-
-      <div class="card">
-        <div class="card-title" style="color:var(--red)">⚠️ Danger Zone</div>
-        <button class="btn btn-outline" onclick="clearSynced()" type="button"
-                style="color:var(--orange);border-color:var(--orange);margin-bottom:8px">
-          🧹 Clear Synced Records
-        </button>
-        <button class="btn btn-danger" onclick="hardReset()" type="button">🗑️ Reset All Data</button>
+        <div class="ct" style="color:var(--red)">⚠️ Danger Zone</div>
+        <button class="btn btno" onclick="clearSynced()" style="color:var(--ora);border-color:var(--ora);margin-bottom:8px">🧹 Clear Synced</button>
+        <button class="btn btnd" onclick="hardReset()">🗑️ Reset All Data</button>
       </div>
     </div>
 
   </div><!-- /content -->
 
-  <!-- TABBAR -->
+  <!-- Tabbar -->
   <div id="tabbar">
-    <button class="tab-btn active" id="tab-customers" onclick="goTab('customers')" type="button">
-      <div class="tab-icon-wrap"><span class="tab-icon">🏠</span></div>
-      <span>Customers</span>
+    <button class="tbt on" id="tab-c" onclick="goTab('c')">
+      <div class="ti">🏠</div><span>Customers</span>
     </button>
-    <button class="tab-btn" id="tab-queue" onclick="goTab('queue')" type="button">
-      <div class="tab-icon-wrap">
-        <span class="tab-icon">📋</span>
-        <span class="tab-badge" id="q-badge">0</span>
-      </div>
+    <button class="tbt" id="tab-q" onclick="goTab('q')">
+      <div class="ti"><span style="font-size:23px">📋</span><span class="tbdg" id="qbdg">0</span></div>
       <span>Queue</span>
     </button>
-    <button class="tab-btn" id="tab-settings" onclick="goTab('settings')" type="button">
-      <div class="tab-icon-wrap"><span class="tab-icon">⚙️</span></div>
-      <span>Settings</span>
+    <button class="tbt" id="tab-s" onclick="goTab('s')">
+      <div class="ti">⚙️</div><span>Settings</span>
     </button>
   </div>
 
 </div><!-- /app -->
+
+<!-- Print overlay (on-screen preview before printing) -->
+<div id="pr-overlay">
+  <div id="pr-box"></div>
+</div>
 
 <div id="toast"></div>
 
 <script>
 'use strict';
 
-// ── DB ──────────────────────────────────────────────────────────────────────
-const DB_NAME   = 'aqf_v3';
-const DB_VER    = 1;
-const SQ        = 'queue';
-const SC        = 'cache';
-const SE        = 'edits';
-let   DB;
-
+// ── DB ────────────────────────────────────────────────────────────────────────
+const DBN='aqf4',DBV=1,SQ='q',SC='c',DB_REF={};
+let DB;
 function openDB(){
   return new Promise((ok,fail)=>{
-    const r=indexedDB.open(DB_NAME,DB_VER);
+    const r=indexedDB.open(DBN,DBV);
     r.onupgradeneeded=e=>{
-      const db=e.target.result;
-      if(!db.objectStoreNames.contains(SQ)) db.createObjectStore(SQ,{keyPath:'lid'});
-      if(!db.objectStoreNames.contains(SC)) db.createObjectStore(SC,{keyPath:'k'});
-      if(!db.objectStoreNames.contains(SE)) db.createObjectStore(SE,{keyPath:'cid'});
+      const d=e.target.result;
+      if(!d.objectStoreNames.contains(SQ))d.createObjectStore(SQ,{keyPath:'lid'});
+      if(!d.objectStoreNames.contains(SC))d.createObjectStore(SC,{keyPath:'k'});
     };
     r.onsuccess=e=>ok(e.target.result);
     r.onerror=e=>fail(e.target.error);
   });
 }
-const put=(s,o)=>new Promise((ok,f)=>{const t=DB.transaction(s,'readwrite');const r=t.objectStore(s).put(o);r.onsuccess=()=>ok();r.onerror=()=>f(r.error)});
-const getAll=(s)=>new Promise((ok,f)=>{const t=DB.transaction(s,'readonly');const r=t.objectStore(s).getAll();r.onsuccess=()=>ok(r.result);r.onerror=()=>f(r.error)});
-const del=(s,k)=>new Promise((ok,f)=>{const t=DB.transaction(s,'readwrite');const r=t.objectStore(s).delete(k);r.onsuccess=()=>ok();r.onerror=()=>f(r.error)});
-const clear=(s)=>new Promise((ok,f)=>{const t=DB.transaction(s,'readwrite');const r=t.objectStore(s).clear();r.onsuccess=()=>ok();r.onerror=()=>f(r.error)});
+const iput=(s,o)=>new Promise((ok,f)=>{const t=DB.transaction(s,'readwrite');const r=t.objectStore(s).put(o);r.onsuccess=()=>ok();r.onerror=()=>f(r.error)});
+const iall=(s)=>new Promise((ok,f)=>{const t=DB.transaction(s,'readonly');const r=t.objectStore(s).getAll();r.onsuccess=()=>ok(r.result);r.onerror=()=>f(r.error)});
+const idel=(s,k)=>new Promise((ok,f)=>{const t=DB.transaction(s,'readwrite');const r=t.objectStore(s).delete(k);r.onsuccess=()=>ok();r.onerror=()=>f(r.error)});
+const iclr=(s)=>new Promise((ok,f)=>{const t=DB.transaction(s,'readwrite');const r=t.objectStore(s).clear();r.onsuccess=()=>ok();r.onerror=()=>f(r.error)});
 
-// ── State ────────────────────────────────────────────────────────────────────
-let customers  = [];
-let queue      = [];
-let todayMap   = {};
-let curCust    = null;
-let photoB64   = null;
-let isOnline   = navigator.onLine;
-let syncing    = false;
-let activeTab  = 'customers';
-let activeFilter = 'all';
+// ── State ─────────────────────────────────────────────────────────────────────
+let customers=[],queue=[],todayMap={},curC=null,photoB64=null;
+let isOnline=navigator.onLine,syncing=false,activeTab='c',activeF='all';
+let lastSavedBill=null,lastSavedPay=null; // for print after save
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-const getUrl  = ()=>(localStorage.getItem('srv_url')||'').replace(/\/$/,'');
-const getToken= ()=>localStorage.getItem('auth_tok')||'';
-const getUser = ()=>{try{return JSON.parse(localStorage.getItem('usr_data')||'{}')}catch{return{}}};
-const today   = ()=>new Date().toISOString().slice(0,10);
-const lid     = ()=>'r'+Date.now()+'x'+Math.random().toString(36).slice(2,5);
-const esc     = s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const getUrl =()=>(localStorage.getItem('srv')||'').replace(/\/$/,'');
+const getTok  =()=>localStorage.getItem('tok')||'';
+const getUser =()=>{try{return JSON.parse(localStorage.getItem('usr')||'{}')}catch{return{}}};
+const today   =()=>new Date().toISOString().slice(0,10);
+const lid     =()=>'r'+Date.now()+'x'+Math.random().toString(36).slice(2,5);
+const esc     =s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const fmt     =n=>'₱'+parseFloat(n||0).toLocaleString('en-PH',{minimumFractionDigits:2});
 
-function toast(msg,dur=3000){
+function toast(m,d=3000){
   const el=document.getElementById('toast');
-  el.textContent=msg;el.classList.add('show');
-  clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),dur);
+  el.textContent=m;el.classList.add('on');
+  clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('on'),d);
 }
-function log(id,msg,t='info'){
+function log(id,m,t='inf'){
   const el=document.getElementById(id);if(!el)return;
   el.style.display='block';
   const d=document.createElement('div');
-  d.className='l-'+t;
-  d.textContent='['+new Date().toLocaleTimeString()+'] '+msg;
+  d.className='l'+t;d.textContent='['+new Date().toLocaleTimeString()+'] '+m;
   el.appendChild(d);el.scrollTop=el.scrollHeight;
 }
 
-// ── Network ──────────────────────────────────────────────────────────────────
-function updateNet(){
+// ── Network ───────────────────────────────────────────────────────────────────
+function updNet(){
   isOnline=navigator.onLine;
-  document.getElementById('net-dot').classList.toggle('off',!isOnline);
+  document.getElementById('nd').classList.toggle('off',!isOnline);
   const u=getUser();
   document.getElementById('tb-sub').textContent=(u.name||'Staff')+' · '+(isOnline?'Online':'Offline');
 }
-window.addEventListener('online',()=>{updateNet();toast('🌐 Online — syncing…');setTimeout(syncNow,1000)});
-window.addEventListener('offline',()=>{updateNet();toast('📵 Offline — saved locally')});
+window.addEventListener('online',()=>{updNet();toast('🌐 Online — syncing…');setTimeout(syncNow,1000)});
+window.addEventListener('offline',()=>{updNet();toast('📵 Offline — saved locally')});
 
-// ── API ──────────────────────────────────────────────────────────────────────
+// ── API ───────────────────────────────────────────────────────────────────────
 async function api(action,method='GET',body=null){
   const url=getUrl()+'/api/sync.php?action='+action;
-  const o={method,headers:{'Content-Type':'application/json','X-API-Token':getToken()}};
+  const o={method,headers:{'Content-Type':'application/json','X-API-Token':getTok()}};
   if(body)o.body=JSON.stringify(body);
   const r=await fetch(url,{...o,signal:AbortSignal.timeout(12000)});
   const d=await r.json();
@@ -671,504 +479,481 @@ async function api(action,method='GET',body=null){
   return d.data;
 }
 
-// ── LOGIN ────────────────────────────────────────────────────────────────────
+// ── LOGIN ─────────────────────────────────────────────────────────────────────
 async function doLogin(){
-  const url  =document.getElementById('l-url').value.trim().replace(/\/$/,'');
-  const email=document.getElementById('l-email').value.trim();
-  const pass =document.getElementById('l-pass').value;
-  const errEl=document.getElementById('l-err');
-  errEl.style.display='none';
-  if(!url||!email||!pass){errEl.textContent='Please fill all fields.';errEl.style.display='block';return}
-  const btn=document.getElementById('l-btn-txt');
-  btn.textContent='Signing in…';document.getElementById('l-btn').disabled=true;
+  const url=document.getElementById('lu').value.trim().replace(/\/$/,'');
+  const em=document.getElementById('le').value.trim();
+  const pw=document.getElementById('lp').value;
+  const err=document.getElementById('lerr');
+  err.style.display='none';
+  if(!url||!em||!pw){err.textContent='Fill all fields.';err.style.display='block';return}
+  const btxt=document.getElementById('lbtxt');
+  btxt.textContent='Signing in…';document.getElementById('lbtn').disabled=true;
   try{
-    localStorage.setItem('srv_url',url);
+    localStorage.setItem('srv',url);
     const r=await fetch(url+'/api/sync.php?action=login',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({email,password:pass}),signal:AbortSignal.timeout(10000)
+      body:JSON.stringify({email:em,password:pw}),signal:AbortSignal.timeout(10000)
     });
     const d=await r.json();
     if(!d.ok)throw new Error(d.error);
-    localStorage.setItem('auth_tok',d.data.token);
-    localStorage.setItem('usr_data',JSON.stringify(d.data.user));
-    startApp();
-    loadCustomers(true);
+    localStorage.setItem('tok',d.data.token);
+    localStorage.setItem('usr',JSON.stringify(d.data.user));
+    startApp();loadCustomers(true);
   }catch(e){
-    errEl.textContent=e.message.includes('fetch')||e.message.includes('Failed')
-      ?'Cannot reach server. Check URL and connection.':e.message;
-    errEl.style.display='block';
-  }finally{btn.textContent='Sign In';document.getElementById('l-btn').disabled=false}
+    err.textContent=e.message.includes('fetch')||e.message.includes('Failed')
+      ?'Cannot reach server. Check URL.':e.message;
+    err.style.display='block';
+  }finally{btxt.textContent='Sign In';document.getElementById('lbtn').disabled=false}
 }
-document.getElementById('l-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
-document.getElementById('l-email').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('l-pass').focus()});
+document.getElementById('lp').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
+document.getElementById('le').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('lp').focus()});
 
 function doLogout(){
   if(!confirm('Log out? Unsynced readings remain saved.'))return;
-  localStorage.removeItem('auth_tok');localStorage.removeItem('usr_data');
+  localStorage.removeItem('tok');localStorage.removeItem('usr');
   document.getElementById('app').style.display='none';
   document.getElementById('login').style.display='flex';
 }
 
-// ── START APP ────────────────────────────────────────────────────────────────
+// ── APP START ─────────────────────────────────────────────────────────────────
 function startApp(){
   document.getElementById('login').style.display='none';
   document.getElementById('app').style.display='flex';
-  document.getElementById('st-url').value=getUrl();
-  updateNet();
-  refreshSessionInfo();
+  document.getElementById('sturl').value=getUrl();
+  updNet();updSessInfo();
 }
 
-// ── TAB NAVIGATION ─────────────────────────────────────────────────────────
-// Simple: hide all pages, show the one that matches.
-// No position:absolute, no z-index tricks, just display:none/flex.
-function goTab(tab){
-  activeTab=tab;
-  // Update tab buttons
-  ['customers','queue','settings'].forEach(t=>{
-    document.getElementById('tab-'+t)?.classList.toggle('active',t===tab);
+// ── TAB NAV ───────────────────────────────────────────────────────────────────
+function goTab(t){
+  activeTab=t;
+  ['c','q','s'].forEach(x=>{
+    document.getElementById('tab-'+x)?.classList.toggle('on',x===t);
+    document.getElementById('pg-'+x)?.classList.toggle('on',x===t);
   });
-  // Show/hide pages
-  ['customers','queue','settings'].forEach(t=>{
-    const pg=document.getElementById('pg-'+t);
-    if(pg)pg.classList.toggle('active',t===tab);
-  });
-  // Always hide reading form when switching tabs
-  document.getElementById('pg-reading')?.classList.remove('active');
-  // Lazy-load page data
-  if(tab==='queue')renderQueue();
-  if(tab==='settings')refreshSessionInfo();
-  if(tab==='customers')renderList();
+  document.getElementById('pg-r').classList.remove('on');
+  if(t==='q')renderQ();
+  if(t==='s')updSessInfo();
+  if(t==='c')renderList();
 }
 
 function handleRefresh(){
-  if(activeTab==='customers'){toast('⟳ Refreshing…');loadCustomers(true)}
-  else if(activeTab==='queue')syncNow();
+  if(activeTab==='c'){toast('⟳ Refreshing…');loadCustomers(true)}
+  else if(activeTab==='q')syncNow();
   else testConn();
 }
 
-// ── CUSTOMERS ───────────────────────────────────────────────────────────────
-async function loadCustomers(fetchFresh=false){
-  // Load from cache first (instant)
+// ── CUSTOMERS ─────────────────────────────────────────────────────────────────
+async function loadCustomers(fresh=false){
   try{
-    const cached=(await getAll(SC)).find(x=>x.k==='cust');
-    if(cached?.v?.length){
-      customers=cached.v;
-      await applyEdits();
-      await buildTodayMap();
-      renderList();
-    }
+    const ca=(await iall(SC)).find(x=>x.k==='cust');
+    if(ca?.v?.length){customers=ca.v;await buildTM();renderList()}
   }catch(e){}
-
-  if(fetchFresh&&isOnline){
+  if(fresh&&isOnline){
     try{
       const d=await api('customers');
       customers=d.customers||[];
-      await put(SC,{k:'cust',v:customers,ts:Date.now()});
-      await applyEdits();
-      await buildTodayMap();
-      renderList();
-      toast('✅ '+customers.length+' customers loaded');
+      await iput(SC,{k:'cust',v:customers,ts:Date.now()});
+      await buildTM();renderList();
+      toast('✅ '+customers.length+' customers');
     }catch(e){
-      if(!customers.length){
-        document.getElementById('cust-list').innerHTML=
-          `<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-title">Cannot load customers</div><div class="empty-sub">${esc(e.message)}</div></div>`;
-      }else toast('⚠️ Refresh failed — using cached data');
+      if(!customers.length)
+        document.getElementById('clist').innerHTML=`<div class="emp"><div class="ei">⚠️</div><div class="et">Load failed</div><div class="es">${esc(e.message)}</div></div>`;
+      else toast('⚠️ Refresh failed — using cached');
     }
   }else if(!customers.length){
-    document.getElementById('cust-list').innerHTML=
-      `<div class="empty"><div class="empty-icon">📵</div><div class="empty-title">No cached data</div><div class="empty-sub">Connect to internet and tap ↻ to load customers.</div></div>`;
+    document.getElementById('clist').innerHTML=`<div class="emp"><div class="ei">📵</div><div class="et">No cached data</div><div class="es">Connect to internet and tap ↻</div></div>`;
   }
 }
 
-async function applyEdits(){
-  try{
-    const edits=await getAll(SE);
-    edits.forEach(e=>{
-      const i=customers.findIndex(c=>c.id===e.cid);
-      if(i<0)return;
-      if(e.meter_no)customers[i].meter_no=e.meter_no;
-      if(e.name)    customers[i].name    =e.name;
-      if(e.address) customers[i].address =e.address;
-    });
-  }catch(e){}
+async function buildTM(){
+  todayMap={};queue=await iall(SQ);
+  const t=today();queue.forEach(r=>{if(r.rdate===t)todayMap[r.cid]=r});
+  updBdg();
 }
 
-async function buildTodayMap(){
-  todayMap={};
-  const t=today();
-  queue=await getAll(SQ);
-  queue.forEach(r=>{if(r.rdate===t)todayMap[r.cid]=r});
-  updateBadge();
-}
-
-function updateBadge(){
+function updBdg(){
   const n=queue.filter(r=>!r.synced).length;
-  const b=document.getElementById('q-badge');
+  const b=document.getElementById('qbdg');
   if(b){b.textContent=n;b.style.display=n>0?'flex':'none'}
-  const sp=document.getElementById('s-pend');
-  if(sp)sp.textContent=n;
+  const sp=document.getElementById('sp');if(sp)sp.textContent=n;
 }
 
-function setFilter(el){
-  activeFilter=el.dataset.f||'all';
-  document.querySelectorAll('#filter-chips .chip').forEach(c=>c.classList.remove('active'));
-  el.classList.add('active');
-  renderList();
+function setF(el){
+  activeF=el.dataset.f||'all';
+  document.querySelectorAll('#fchips .chip').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');renderList();
 }
 
 function renderList(){
-  const q=(document.getElementById('c-search')?.value||'').toLowerCase();
-  const el=document.getElementById('cust-list');
-  const total=customers.length;
-  const doneN=customers.filter(c=>!!todayMap[c.id]).length;
+  const q=(document.getElementById('cs')?.value||'').toLowerCase();
+  const el=document.getElementById('clist');
+  const total=customers.length,doneN=customers.filter(c=>!!todayMap[c.id]).length;
   const pendN=queue.filter(r=>!r.synced).length;
-  const stT=document.getElementById('s-total');
-  const stD=document.getElementById('s-done');
-  if(stT)stT.textContent=total;
-  if(stD)stD.textContent=doneN;
-  updateBadge();
-  const pa=document.getElementById('pg-progress');
-  if(pa)pa.style.display=total>0?'':'none';
+  const stEl=document.getElementById('st'),sdEl=document.getElementById('sd');
+  if(stEl)stEl.textContent=total;if(sdEl)sdEl.textContent=doneN;
+  updBdg();
+  const pa=document.getElementById('pp');if(pa)pa.style.display=total>0?'':'none';
   const pct=total>0?Math.round(doneN/total*100):0;
-  const pf=document.getElementById('pg-fill');const pp=document.getElementById('pg-pct');
-  if(pf)pf.style.width=pct+'%';if(pp)pp.textContent=pct+'%';
-
+  const pf=document.getElementById('ppf'),pt=document.getElementById('ppt');
+  if(pf)pf.style.width=pct+'%';if(pt)pt.textContent=pct+'%';
   let filtered=customers.filter(c=>{
     const mq=!q||c.name.toLowerCase().includes(q)||(c.meter_no||'').toLowerCase().includes(q)||(c.id||'').toLowerCase().includes(q);
-    const done=!!todayMap[c.id];
-    if(activeFilter==='done'&&!done)return false;
-    if(activeFilter==='pend'&&done)return false;
+    const dn=!!todayMap[c.id];
+    if(activeF==='done'&&!dn)return false;
+    if(activeF==='pend'&&dn)return false;
     return mq;
   });
-
   if(!filtered.length){
-    el.innerHTML=`<div class="empty"><div class="empty-icon">🔍</div><div class="empty-title">No customers found</div><div class="empty-sub">Try a different search or filter.</div></div>`;
-    return;
+    el.innerHTML=`<div class="emp"><div class="ei">🔍</div><div class="et">No customers found</div></div>`;return;
   }
-
-  // Build HTML — each item calls openReading with the customer id
   el.innerHTML=filtered.map(c=>{
-    const done=!!todayMap[c.id];
-    const pend=queue.some(r=>r.cid===c.id&&!r.synced);
-    const cls=done?'done':(pend?'pend':'');
-    const ind=done?'✅':(pend?'⏳':'');
+    const dn=!!todayMap[c.id],pn=queue.some(r=>r.cid===c.id&&!r.synced);
+    const cls=dn?'done':(pn?'pend':'');
+    const ind=dn?'✅':(pn?'⏳':'');
     const prev=parseFloat(c.last_reading||0).toFixed(0);
-    const cid=esc(c.id);
-    return `<div class="cust-item ${cls}" data-cid="${cid}" onclick="openReadingById('${cid}')">
-      <div class="cust-av">${esc((c.name||'?')[0]).toUpperCase()}</div>
-      <div class="cust-info">
-        <div class="cust-name">${esc(c.name)}</div>
-        <div class="cust-meta">📟 ${esc(c.meter_no)} · ${cid}</div>
-        <div class="cust-meta">${esc(c.address||'')}</div>
+    return `<div class="ci ${cls}" data-cid="${esc(c.id)}" onclick="openR('${esc(c.id)}')">
+      <div class="cav">${esc((c.name||'?')[0]).toUpperCase()}</div>
+      <div class="cnfo">
+        <div class="cn">${esc(c.name)}</div>
+        <div class="cm">📟 ${esc(c.meter_no)} · ${esc(c.id)}</div>
+        <div class="cm">${esc(c.address||'')}</div>
       </div>
-      <div class="cust-right">
+      <div class="cr">
         ${ind?`<div style="font-size:19px;margin-bottom:2px">${ind}</div>`:''}
-        <div class="cust-rdg">${prev}</div>
-        <div class="cust-rdg-lbl">Last m³</div>
+        <div class="crv">${prev}</div><div class="crl">Last m³</div>
       </div>
     </div>`;
   }).join('');
 }
 
-// Called from onclick — looks up customer by id string
-function openReadingById(cid){
-  const c=customers.find(x=>x.id===cid);
-  if(!c){toast('Customer not found');return}
-  openReading(c);
-}
-
-function openReading(c){
-  curCust=c;photoB64=null;
-  document.getElementById('rf-name').textContent=c.name;
-  document.getElementById('rf-id').textContent=c.id;
-  document.getElementById('rf-meter').textContent='📟 '+(c.meter_no||'—');
-  document.getElementById('rf-status').textContent=c.status||'Active';
-  document.getElementById('rf-addr').textContent=c.address||'';
-  document.getElementById('rf-prev').textContent=parseFloat(c.last_reading||0).toFixed(2);
-  document.getElementById('rf-curr').value='';
-  document.getElementById('rf-date').value=today();
-  document.getElementById('rf-notes').value='';
-  document.getElementById('photo-prev').style.display='none';
-  document.getElementById('photo-prev').src='';
-  document.getElementById('rf-photo').value='';
-  document.getElementById('photo-lbl').textContent='📷 Add Meter Photo (optional)';
-  document.getElementById('cons-box').style.display='none';
-  document.getElementById('em-meter').value=c.meter_no||'';
-  document.getElementById('em-name').value=c.name||'';
-  document.getElementById('em-addr').value=c.address||'';
-  // Collapse edit section
-  document.getElementById('edit-body').classList.remove('open');
-  document.getElementById('edit-arrow').textContent='＋';
+// ── READING FORM ──────────────────────────────────────────────────────────────
+function openR(cid){
+  const c=customers.find(x=>x.id===cid);if(!c){toast('Customer not found');return}
+  curC=c;photoB64=null;lastSavedBill=null;lastSavedPay=null;
+  document.getElementById('rfn').textContent=c.name;
+  document.getElementById('rfi').textContent=c.id;
+  document.getElementById('rfm2').textContent='📟 '+(c.meter_no||'—');
+  document.getElementById('rfst').textContent=c.status||'Active';
+  document.getElementById('rfa').textContent=c.address||'';
+  document.getElementById('rfpv').textContent=parseFloat(c.last_reading||0).toFixed(2);
+  document.getElementById('rfcv').value='';
+  document.getElementById('rfdt').value=today();
+  document.getElementById('rfnt').value='';
+  document.getElementById('phpv').style.display='none';
+  document.getElementById('phpv').src='';
+  document.getElementById('rfph').value='';
+  document.getElementById('phlbl').textContent='📷 Add Meter Photo (optional)';
+  document.getElementById('cbox').style.display='none';
+  document.getElementById('print-section').style.display='none';
+  document.getElementById('print-rcpt-btn').style.display='none';
   // Switch to reading page
-  document.getElementById('pg-customers').classList.remove('active');
-  document.getElementById('pg-reading').classList.add('active');
-  document.getElementById('pg-reading').scrollTop=0;
-  setTimeout(()=>document.getElementById('rf-curr').focus(),150);
+  ['c','q','s'].forEach(x=>document.getElementById('pg-'+x).classList.remove('on'));
+  document.getElementById('pg-r').classList.add('on');
+  document.getElementById('pg-r').scrollTop=0;
+  setTimeout(()=>document.getElementById('rfcv').focus(),150);
 }
 
-function closeReading(){
-  document.getElementById('pg-reading').classList.remove('active');
-  document.getElementById('pg-customers').classList.add('active');
-  // Update tab state
-  ['customers','queue','settings'].forEach(t=>document.getElementById('tab-'+t)?.classList.toggle('active',t==='customers'));
-  activeTab='customers';
-  curCust=null;
+function closeR(){
+  document.getElementById('pg-r').classList.remove('on');
+  document.getElementById('pg-c').classList.add('on');
+  ['c','q','s'].forEach(x=>document.getElementById('tab-'+x)?.classList.toggle('on',x==='c'));
+  activeTab='c';curC=null;
 }
 
-// ── EDIT METER ───────────────────────────────────────────────────────────────
-function toggleEdit(){
-  const body=document.getElementById('edit-body');
-  const arrow=document.getElementById('edit-arrow');
-  const isOpen=body.classList.contains('open');
-  body.classList.toggle('open',!isOpen);
-  arrow.textContent=isOpen?'＋':'－';
+function updPrev(){
+  const prev=parseFloat(document.getElementById('rfpv').textContent)||0;
+  const curr=parseFloat(document.getElementById('rfcv').value);
+  const box=document.getElementById('cbox'),val=document.getElementById('cval');
+  if(!document.getElementById('rfcv').value){box.style.display='none';return}
+  const cons=curr-prev;val.textContent=cons.toFixed(2);box.style.display='';
+  box.className='cb '+(cons<0?'cberr':cons>60?'cbwarn':'cbok');
 }
 
-async function saveEditMeter(){
-  if(!curCust)return;
-  const meter=document.getElementById('em-meter').value.trim();
-  const name =document.getElementById('em-name').value.trim();
-  const addr =document.getElementById('em-addr').value.trim();
-  if(!meter&&!name){toast('⚠️ Enter meter number or name.');return}
-  // Save to edits store
-  await put(SE,{cid:curCust.id,meter_no:meter,name,address:addr,ts:Date.now()});
-  // Update in-memory
-  const idx=customers.findIndex(c=>c.id===curCust.id);
-  if(idx>=0){
-    if(meter)customers[idx].meter_no=meter;
-    if(name) customers[idx].name=name;
-    if(addr) customers[idx].address=addr;
-    await put(SC,{k:'cust',v:customers,ts:Date.now()});
-    curCust=customers[idx];
-  }
-  document.getElementById('rf-name').textContent=curCust.name;
-  document.getElementById('rf-meter').textContent='📟 '+(curCust.meter_no||'—');
-  document.getElementById('rf-addr').textContent=curCust.address||'';
-  toggleEdit();
-  toast('✅ Meter details saved locally!');
-}
-
-// ── READING FORM ─────────────────────────────────────────────────────────────
-function updatePreview(){
-  const prev=parseFloat(document.getElementById('rf-prev').textContent)||0;
-  const curr=parseFloat(document.getElementById('rf-curr').value);
-  const box=document.getElementById('cons-box');
-  const val=document.getElementById('cons-val');
-  if(!document.getElementById('rf-curr').value){box.style.display='none';return}
-  const c=curr-prev;val.textContent=c.toFixed(2);box.style.display='';
-  box.className='cons-box '+(c<0?'cons-err':c>60?'cons-warn':'cons-ok');
-}
-
-function handlePhoto(inp){
+function handlePh(inp){
   const f=inp.files[0];if(!f)return;
   const r=new FileReader();
   r.onload=e=>{
     photoB64=e.target.result;
-    const img=document.getElementById('photo-prev');
-    img.src=photoB64;img.style.display='block';
-    document.getElementById('photo-lbl').textContent='📷 Change Photo';
-  };
-  r.readAsDataURL(f);
+    const img=document.getElementById('phpv');img.src=photoB64;img.style.display='block';
+    document.getElementById('phlbl').textContent='📷 Change Photo';
+  };r.readAsDataURL(f);
 }
 
-async function saveReading(){
-  if(!curCust){toast('No customer selected.');return}
-  const prev=parseFloat(document.getElementById('rf-prev').textContent)||0;
-  const curr=parseFloat(document.getElementById('rf-curr').value);
-  const date=document.getElementById('rf-date').value;
-  const notes=document.getElementById('rf-notes').value.trim();
-  if(isNaN(curr)||document.getElementById('rf-curr').value===''){toast('⚠️ Enter a reading value.');return}
-  if(!date){toast('⚠️ Select a date.');return}
+async function saveR(){
+  if(!curC){toast('No customer selected.');return}
+  const prev=parseFloat(document.getElementById('rfpv').textContent)||0;
+  const curr=parseFloat(document.getElementById('rfcv').value);
+  const dt=document.getElementById('rfdt').value;
+  const notes=document.getElementById('rfnt').value.trim();
+  if(isNaN(curr)||document.getElementById('rfcv').value===''){toast('⚠️ Enter a reading.');return}
+  if(!dt){toast('⚠️ Select a date.');return}
   if(curr<prev&&!confirm(`Current (${curr}) < previous (${prev}). Save anyway?`))return;
+  const cons=parseFloat((curr-prev).toFixed(2));
   const entry={
-    lid:lid(),cid:curCust.id,cname:curCust.name,meter_no:curCust.meter_no,
-    rdate:date,prev_reading:prev,curr_reading:curr,
-    consumption:parseFloat((curr-prev).toFixed(2)),
-    // field names the API expects:
-    customer_id:curCust.id,reading_date:date,
-    previous_reading:prev,current_reading:curr,
+    lid:lid(),cid:curC.id,cname:curC.name,meter_no:curC.meter_no,
+    rdate:dt,prev_reading:prev,curr_reading:curr,consumption:cons,
+    customer_id:curC.id,reading_date:dt,previous_reading:prev,current_reading:curr,
     notes,photo:photoB64,synced:false,ts:Date.now()
   };
   try{
-    await put(SQ,entry);
-    queue.push(entry);
-    todayMap[curCust.id]=entry;
-    const idx=customers.findIndex(c=>c.id===curCust.id);
-    if(idx>=0){customers[idx].last_reading=curr;customers[idx].last_reading_date=date;
-      await put(SC,{k:'cust',v:customers,ts:Date.now()})}
-    updateBadge();
-    toast('✅ Reading saved!'+(isOnline?' Syncing…':' (offline — will sync later)'));
-    closeReading();
-    if(isOnline)setTimeout(syncNow,800);
+    await iput(SQ,entry);queue.push(entry);todayMap[curC.id]=entry;
+    const idx=customers.findIndex(c=>c.id===curC.id);
+    if(idx>=0){customers[idx].last_reading=curr;customers[idx].last_reading_date=dt;
+      await iput(SC,{k:'cust',v:customers,ts:Date.now()})}
+    updBdg();
+    toast('✅ Reading saved!'+(isOnline?' Syncing…':' (offline)'));
+
+    // Show print section
+    document.getElementById('print-section').style.display='block';
+    document.getElementById('pg-r').scrollTop=99999;
+
+    // Store for printing
+    lastSavedBill={
+      reading_date:dt,billing_month:getMonthLabel(dt),
+      customer_name:curC.name,customer_id:curC.id,meter_no:curC.meter_no,
+      address:curC.address||'',prev_reading:prev,curr_reading:curr,consumption:cons,
+      base_charge:120,rate_per_cubic:35,penalty:0,
+      total:(120+cons*35),status:'Unpaid',
+      due_date:getFutureDate(dt,15)
+    };
+
+    if(isOnline)setTimeout(()=>syncAndFetchBill(entry),800);
   }catch(e){toast('❌ Save failed: '+e.message)}
 }
 
-// ── QUEUE ────────────────────────────────────────────────────────────────────
-function renderQueue(){
-  const pend=queue.filter(r=>!r.synced);
-  const sync=queue.filter(r=>r.synced);
-  const el=document.getElementById('queue-list');
-  const sm=document.getElementById('q-summary');
-  const sb=document.getElementById('sync-btn');
+function getMonthLabel(d){return new Date(d).toLocaleDateString('en-US',{month:'long',year:'numeric'})}
+function getFutureDate(d,days){const dt=new Date(d);dt.setDate(dt.getDate()+days);return dt.toISOString().slice(0,10)}
+
+// After sync, try to fetch the actual bill and payment from server
+async function syncAndFetchBill(entry){
+  try{
+    await syncNow();
+    // Try to fetch bill info from server for printing
+    const d=await api('last_readings');
+    // Update local bill with actual data if available
+  }catch(e){}
+}
+
+// ── PRINT BILL ─────────────────────────────────────────────────────────────────
+function printBill(){
+  if(!lastSavedBill){toast('No bill data available.');return}
+  const b=lastSavedBill;
+  const html=`
+    <div class="pr-hdr">
+      <div class="pr-org">AQUABILL COOP. INC.</div>
+      <div class="pr-addr">San Juan, Siquijor, Philippines</div>
+      <div class="pr-title">— Water Bill Statement —</div>
+    </div>
+    <div class="pr-row"><span><b>Period:</b></span><span>${esc(b.billing_month)}</span></div>
+    <div class="pr-row"><span><b>Due Date:</b></span><span>${esc(b.due_date)}</span></div>
+    <hr class="pr-div">
+    <div class="pr-row"><span><b>Customer:</b></span><span>${esc(b.customer_name)}</span></div>
+    <div class="pr-row"><span><b>Account No:</b></span><span>${esc(b.customer_id)}</span></div>
+    <div class="pr-row"><span><b>Meter No:</b></span><span>${esc(b.meter_no)}</span></div>
+    <div class="pr-row"><span><b>Address:</b></span><span style="text-align:right;max-width:55%">${esc(b.address)}</span></div>
+    <hr class="pr-div">
+    <div class="pr-row"><span>Previous Reading:</span><span>${b.prev_reading} m³</span></div>
+    <div class="pr-row"><span>Current Reading:</span><span>${b.curr_reading} m³</span></div>
+    <div class="pr-row"><span><b>Consumption:</b></span><span><b>${b.consumption} m³</b></span></div>
+    <hr class="pr-div">
+    <div class="pr-row"><span>Base Charge:</span><span>₱${b.base_charge.toFixed(2)}</span></div>
+    <div class="pr-row"><span>Usage (${b.consumption} m³ × ₱${b.rate_per_cubic}):</span><span>₱${(b.consumption*b.rate_per_cubic).toFixed(2)}</span></div>
+    ${b.penalty>0?`<div class="pr-row"><span>Penalty:</span><span>₱${parseFloat(b.penalty).toFixed(2)}</span></div>`:''}
+    <hr class="pr-div">
+    <div class="pr-amt">${fmt(b.total)}</div>
+    <div class="pr-row"><span>Status:</span><span style="font-weight:700;color:#c1121f">${esc(b.status)}</span></div>
+    <div class="pr-foot">
+      Pay via GCash: 09269340806<br>
+      AquaBill Coop. Inc. · San Juan, Siquijor, Philippines<br>
+      Please pay on or before the due date.
+    </div>`;
+  showPrintOverlay(html, 'bill');
+}
+
+// ── PRINT RECEIPT ──────────────────────────────────────────────────────────────
+function printReceipt(){
+  if(!lastSavedPay){toast('No receipt data available yet. Sync first.');return}
+  const p=lastSavedPay;
+  const html=`
+    <div class="pr-hdr">
+      <div class="pr-org">AQUABILL COOP. INC.</div>
+      <div class="pr-addr">San Juan, Siquijor, Philippines</div>
+      <div class="pr-title">— Official Receipt —</div>
+    </div>
+    <div class="pr-row"><span><b>Receipt No:</b></span><span>${esc(p.receipt_no||'—')}</span></div>
+    <div class="pr-row"><span><b>Date:</b></span><span>${esc(p.payment_date||today())}</span></div>
+    <hr class="pr-div">
+    <div class="pr-row"><span><b>Customer:</b></span><span>${esc(p.customer_name||'')}</span></div>
+    <div class="pr-row"><span><b>Account No:</b></span><span>${esc(p.customer_id||'')}</span></div>
+    <div class="pr-row"><span><b>Bill Period:</b></span><span>${esc(p.billing_month||'')}</span></div>
+    <div class="pr-row"><span><b>Method:</b></span><span>${esc(p.method||'Cash')}</span></div>
+    <hr class="pr-div">
+    <div class="pr-amt">${fmt(p.amount||0)}</div>
+    <div class="pr-foot">
+      Thank you for your payment!<br>
+      This serves as your official receipt.<br>
+      AquaBill Coop. Inc. · San Juan, Siquijor, Philippines
+    </div>`;
+  showPrintOverlay(html, 'receipt');
+}
+
+// ── Print overlay ──────────────────────────────────────────────────────────────
+function showPrintOverlay(html, type){
+  const box=document.getElementById('pr-box');
+  box.innerHTML=html+`
+    <div class="pr-btns">
+      <button onclick="doPrint('${type}')" style="background:var(--bm);color:#fff">🖨️ Print</button>
+      <button onclick="closePrintOverlay()" style="background:#f0f0f0;color:#333">✕ Close</button>
+    </div>`;
+  document.getElementById('pr-overlay').classList.add('on');
+}
+
+function closePrintOverlay(){document.getElementById('pr-overlay').classList.remove('on')}
+
+document.getElementById('pr-overlay').addEventListener('click',function(e){
+  if(e.target===this)closePrintOverlay();
+});
+
+function doPrint(type){
+  const content=document.querySelector('#pr-box .pr-hdr')?.parentElement?.innerHTML||document.getElementById('pr-box').innerHTML;
+  // Remove the buttons div from print content
+  const cleanHtml=document.getElementById('pr-box').innerHTML.replace(/<div class="pr-btns">[\s\S]*?<\/div>/,'');
+  const slot=document.getElementById('printable');
+  slot.innerHTML=cleanHtml;slot.style.display='block';
+  window.print();
+  setTimeout(()=>{slot.innerHTML='';slot.style.display='none';},1500);
+}
+
+// ── QUEUE ─────────────────────────────────────────────────────────────────────
+function renderQ(){
+  const pend=queue.filter(r=>!r.synced),sync=queue.filter(r=>r.synced);
+  const el=document.getElementById('qlist'),sm=document.getElementById('qsum'),sb=document.getElementById('syncbtn');
   if(sm)sm.textContent=`${pend.length} pending · ${sync.length} synced`;
   if(sb){sb.disabled=pend.length===0||syncing;sb.textContent='☁️ Sync to Server'}
-  if(!queue.length){
-    el.innerHTML=`<div class="empty"><div class="empty-icon">📋</div><div class="empty-title">Queue is empty</div></div>`;
-    return;
-  }
+  if(!queue.length){el.innerHTML=`<div class="emp"><div class="ei">📋</div><div class="et">Queue empty</div></div>`;return}
   el.innerHTML=[...pend,...sync].map(r=>`
-    <div class="qi ${r.synced?'synced':''}">
-      <div class="qi-top">
-        <div>
-          <div class="qi-name">${esc(r.cname||r.customer_name||'?')}</div>
-          <div style="font-size:11px;color:var(--gray)">${esc(r.meter_no||'')} · ${esc(r.rdate||r.reading_date||'')}</div>
-        </div>
+    <div class="qi ${r.synced?'done':''}">
+      <div class="qit">
+        <div><div class="qin">${esc(r.cname||r.customer_name||'?')}</div>
+          <div style="font-size:11px;color:var(--gray)">${esc(r.meter_no||'')} · ${esc(r.rdate||r.reading_date||'')}</div></div>
         <div style="display:flex;align-items:center;gap:5px">
-          <span class="qi-status ${r.synced?'qi-done':'qi-pend'}">${r.synced?'✅ Synced':'⏳ Pending'}</span>
-          ${!r.synced?`<button class="qi-del" onclick="delQueue('${r.lid}')" type="button">×</button>`:''}
+          <span class="qis ${r.synced?'qisd':'qisp'}">${r.synced?'✅ Synced':'⏳ Pending'}</span>
+          ${!r.synced?`<button class="qidl" onclick="delQ('${r.lid}')">×</button>`:''}
         </div>
       </div>
-      <div class="qi-meta">
+      <div class="qim">
         <span>Prev: <b>${r.prev_reading??r.previous_reading??0}</b></span>
-        <span>Curr: <b class="qi-rdg">${r.curr_reading??r.current_reading??0}</b></span>
+        <span>Curr: <b style="color:var(--bm)">${r.curr_reading??r.current_reading??0}</b></span>
         <span>Usage: <b>${r.consumption??0} m³</b></span>
         ${r.notes?`<span>📝 ${esc(r.notes)}</span>`:''}
       </div>
     </div>`).join('');
 }
 
-async function delQueue(l){
+async function delQ(l){
   if(!confirm('Remove this reading?'))return;
-  await del(SQ,l);
-  queue=queue.filter(r=>r.lid!==l);
-  await buildTodayMap();
-  renderQueue();renderList();
-  toast('Removed.');
+  await idel(SQ,l);queue=queue.filter(r=>r.lid!==l);
+  await buildTM();renderQ();renderList();toast('Removed.');
 }
 
-function toggleLog(){
-  const el=document.getElementById('sync-log');
-  el.style.display=el.style.display==='none'?'block':'none';
-}
+function tgLog(){const el=document.getElementById('slog');el.style.display=el.style.display==='none'?'block':'none'}
 
-// ── SYNC ─────────────────────────────────────────────────────────────────────
+// ── SYNC ──────────────────────────────────────────────────────────────────────
 async function syncNow(){
-  if(syncing){toast('Sync in progress…');return}
+  if(syncing){toast('Sync running…');return}
   if(!isOnline){toast('📵 No internet');return}
   const pend=queue.filter(r=>!r.synced);
   if(!pend.length){toast('✅ Nothing to sync');return}
   syncing=true;
-  const sb=document.getElementById('sync-btn');
+  const sb=document.getElementById('syncbtn');
   if(sb){sb.textContent='⟳ Syncing…';sb.disabled=true}
-  const logId=activeTab==='queue'?'sync-log':'st-log';
-  log(logId,`Syncing ${pend.length} reading(s)…`,'info');
+  const lid2=activeTab==='q'?'slog':'stlog';
+  log(lid2,`Syncing ${pend.length}…`,'inf');
   try{
-    const result=await api('sync_readings','POST',{readings:pend});
-    log(logId,`✅ Imported: ${result.imported}, Skipped: ${result.skipped}`,'ok');
-    if(result.errors?.length)result.errors.forEach(e=>log(logId,'⚠️ '+e.error,'err'));
-    for(const r of pend){r.synced=true;await put(SQ,r)}
-    queue=await getAll(SQ);
-    await buildTodayMap();
-    if(activeTab==='queue')renderQueue();
-    renderList();
-    toast(`☁️ Synced ${result.imported} reading(s)!`);
-  }catch(e){
-    log(logId,'❌ '+e.message,'err');
-    toast('❌ Sync failed: '+e.message);
-  }finally{
-    syncing=false;
-    if(sb){sb.textContent='☁️ Sync to Server';sb.disabled=false}
-  }
+    const res=await api('sync_readings','POST',{readings:pend});
+    log(lid2,`✅ Imported:${res.imported} Skipped:${res.skipped}`,'ok');
+    if(res.errors?.length)res.errors.forEach(e=>log(lid2,'⚠️ '+e.error,'err'));
+    for(const r of pend){r.synced=true;await iput(SQ,r)}
+    queue=await iall(SQ);await buildTM();
+    if(activeTab==='q')renderQ();renderList();
+    toast(`☁️ Synced ${res.imported}!`);
+  }catch(e){log(lid2,'❌ '+e.message,'err');toast('❌ '+e.message)}
+  finally{syncing=false;if(sb){sb.textContent='☁️ Sync to Server';sb.disabled=false}}
 }
 
-// ── SETTINGS ─────────────────────────────────────────────────────────────────
-function saveSettings(){
-  const u=document.getElementById('st-url').value.trim().replace(/\/$/,'');
-  localStorage.setItem('srv_url',u);
-  document.getElementById('l-url').value=u;
-  toast('✅ Saved!');log('st-log','Saved: '+u,'ok');
+// ── SETTINGS ──────────────────────────────────────────────────────────────────
+function saveSet(){
+  const u=document.getElementById('sturl').value.trim().replace(/\/$/,'');
+  localStorage.setItem('srv',u);document.getElementById('lu').value=u;
+  toast('✅ Saved!');log('stlog','Saved: '+u,'ok');
 }
 
 async function testConn(){
-  const u=document.getElementById('st-url').value.trim().replace(/\/$/,'');
-  if(!u){toast('Enter server URL first.');return}
-  log('st-log','Testing '+u+'…','info');
+  const u=document.getElementById('sturl').value.trim().replace(/\/$/,'');
+  if(!u){toast('Enter URL first.');return}
+  log('stlog','Testing '+u+'…','inf');
   try{
     const r=await fetch(u+'/api/sync.php?action=ping',{signal:AbortSignal.timeout(6000)});
     const d=await r.json();
-    if(d.ok){log('st-log','✅ Connected: '+(d.data?.message||'OK'),'ok');toast('✅ Connected!')}
-    else log('st-log','⚠️ '+d.error,'err');
-  }catch(e){log('st-log','❌ '+e.message,'err');toast('❌ Cannot reach server')}
+    if(d.ok){log('stlog','✅ '+( d.data?.message||'OK'),'ok');toast('✅ Connected!')}
+    else log('stlog','⚠️ '+d.error,'err');
+  }catch(e){log('stlog','❌ '+e.message,'err');toast('❌ Cannot connect')}
 }
 
-function refreshSessionInfo(){
-  const u=getUser();
-  const el=document.getElementById('sess-info');if(!el)return;
+function updSessInfo(){
+  const u=getUser(),el=document.getElementById('sinfo');if(!el)return;
   const pn=queue.filter(r=>!r.synced).length;
   el.innerHTML=[
-    ['User',      u.name||'—'],
-    ['Role',      u.role||'—'],
-    ['Server',    getUrl()||'Not set'],
-    ['Customers', customers.length],
-    ['Queue',     queue.length+' total'],
-    ['Pending',   `<b style="color:var(--orange)">${pn}</b>`],
-    ['Network',   isOnline?'<b style="color:var(--green)">🌐 Online</b>':'<b style="color:var(--red)">📵 Offline</b>'],
-  ].map(([k,v])=>`<div class="si-row"><span style="color:var(--gray)">${k}</span><span>${v}</span></div>`).join('');
+    ['User',u.name||'—'],['Role',u.role||'—'],['Server',getUrl()||'Not set'],
+    ['Customers',customers.length],['Queue',queue.length],
+    ['Pending',`<b style="color:var(--ora)">${pn}</b>`],
+    ['Network',isOnline?'<b style="color:var(--green)">🌐 Online</b>':'<b style="color:var(--red)">📵 Offline</b>'],
+  ].map(([k,v])=>`<div class="sir"><span style="color:var(--gray)">${k}</span><span>${v}</span></div>`).join('');
 }
 
 async function clearSynced(){
-  if(!confirm('Clear synced records?'))return;
+  if(!confirm('Clear synced records? Unsynced kept.'))return;
   const keep=queue.filter(r=>!r.synced);
-  await clear(SQ);
-  for(const r of keep)await put(SQ,r);
-  queue=keep;await buildTodayMap();
-  renderQueue();renderList();toast('🧹 Done.');
+  await iclr(SQ);for(const r of keep)await iput(SQ,r);
+  queue=keep;await buildTM();renderQ();renderList();toast('🧹 Done.');
 }
 
 async function hardReset(){
-  if(!confirm('Delete ALL local data including unsynced readings?'))return;
-  if(!confirm('This CANNOT be undone. Confirm?'))return;
-  await clear(SQ);await clear(SC);await clear(SE);
-  localStorage.clear();toast('Cleared. Reloading…');
-  setTimeout(()=>location.reload(),1500);
+  if(!confirm('Delete ALL local data?'))return;
+  if(!confirm('This cannot be undone. Confirm?'))return;
+  await iclr(SQ);await iclr(SC);localStorage.clear();
+  toast('Cleared. Reloading…');setTimeout(()=>location.reload(),1500);
 }
 
-// ── INIT ─────────────────────────────────────────────────────────────────────
+// ── INIT ──────────────────────────────────────────────────────────────────────
 async function init(){
-  DB=await openDB();
-  updateNet();
-  const saved=localStorage.getItem('srv_url')||'';
-  if(saved){document.getElementById('l-url').value=saved;document.getElementById('st-url').value=saved;}
-  if(getToken()){
+  DB=await openDB();updNet();
+  const saved=localStorage.getItem('srv')||'';
+  if(saved){document.getElementById('lu').value=saved;document.getElementById('sturl').value=saved}
+  if(getTok()){
     startApp();
-    await loadCustomers(false);
-    await buildTodayMap();
-    renderList();
-    if(isOnline){
-      loadCustomers(true);
-      if(queue.filter(r=>!r.synced).length>0)setTimeout(syncNow,2000);
-    }
+    await loadCustomers(false);await buildTM();renderList();
+    if(isOnline){loadCustomers(true);if(queue.filter(r=>!r.synced).length>0)setTimeout(syncNow,2000)}
   }
 }
-
 init();
 </script>
 
-<!-- SERVICE WORKER (PWA) -->
+<!-- Service Worker -->
 <script>
 if('serviceWorker'in navigator){
-  const c=`
-    const V='aqf-v3';
-    self.addEventListener('install',e=>{self.skipWaiting()});
-    self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==V).map(k=>caches.delete(k)))));self.clients.claim()});
-    self.addEventListener('fetch',e=>{
-      if(e.request.url.includes('/api/'))return;
-      e.respondWith(caches.open(V).then(c=>c.match(e.request).then(r=>{
-        const f=fetch(e.request).then(nr=>{c.put(e.request,nr.clone());return nr}).catch(()=>r);
-        return r||f;
-      })));
-    });`;
-  const b=new Blob([c],{type:'application/javascript'});
+  const sw=`const V='aqf4';
+  self.addEventListener('install',e=>self.skipWaiting());
+  self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==V).map(k=>caches.delete(k)))));self.clients.claim()});
+  self.addEventListener('fetch',e=>{
+    if(e.request.url.includes('/api/'))return;
+    e.respondWith(caches.open(V).then(c=>c.match(e.request).then(r=>{
+      const f=fetch(e.request).then(nr=>{if(nr.ok)c.put(e.request,nr.clone());return nr}).catch(()=>r||new Response('Offline'));
+      return r||f;
+    })));
+  });`;
+  const b=new Blob([sw],{type:'application/javascript'});
   navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});
 }
 </script>

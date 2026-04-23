@@ -24,8 +24,9 @@ function renderHeader(string $title = '', string $activePg = ''): void {
         ['href'=>'payments.php',       'icon'=>'💳',  'label'=>'Payments'],
         ['href'=>'reports.php',        'icon'=>'📊',  'label'=>'Reports'],
         ['href'=>'notifications.php',  'icon'=>'🔔',  'label'=>'Notifications', 'badge'=>$notifCount],
+        ['href'=>'gcash_admin.php',    'icon'=>'📱',  'label'=>'GCash Payments'],
         ['href'=>'import.php',         'icon'=>'📥',  'label'=>'CSV Import'],
-        ['href'=>'field-app-guide.php','icon'=>'📱',  'label'=>'Field App'],
+        ['href'=>'field-app-guide.php','icon'=>'📲',  'label'=>'Field App'],
     ];
     if ($u['role'] === 'Admin') {
         $navItems[] = ['href'=>'rates.php',   'icon'=>'💲', 'label'=>'Billing Rates'];

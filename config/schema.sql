@@ -130,3 +130,24 @@ INSERT IGNORE INTO billing_rates (label, min_cubic, max_cubic, rate_per_cubic, b
 ('Standard (21–40 m³)',   21,  40, 35.00,   0.00),
 ('Commercial (41–100 m³)',41, 100, 45.00,   0.00),
 ('Industrial (>100 m³)', 101,NULL, 55.00,   0.00);
+
+-- Add billing rate tier to customers (run if upgrading from earlier version)
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS rate_tier_id INT DEFAULT NULL;
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS gcash_number VARCHAR(20) DEFAULT NULL;
+
+-- Add GCash online payments table
+CREATE TABLE IF NOT EXISTS gcash_payments (
+    id VARCHAR(12) PRIMARY KEY,
+    bill_id VARCHAR(10) NOT NULL,
+    customer_id VARCHAR(10) NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    gcash_ref VARCHAR(50),
+    payer_number VARCHAR(20),
+    status ENUM('Pending','Confirmed','Rejected') NOT NULL DEFAULT 'Pending',
+    notes TEXT,
+    submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    confirmed_at TIMESTAMP NULL,
+    confirmed_by INT NULL,
+    FOREIGN KEY (bill_id) REFERENCES bills(id) ON DELETE CASCADE,
+    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+);
